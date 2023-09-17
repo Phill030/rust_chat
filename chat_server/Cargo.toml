@@ -1,0 +1,19 @@
+[package]
+name = "chat_server"
+version = "0.1.0"
+edition = "2021"
+authors = ["Phill030"]
+
+[dependencies]
+bpaf = "0.9.5"
+env_logger = "0.10.0"
+futures = "0.3.28"
+log = "0.4.20"
+rand = "0.8.5"
+rayon = "1.7.0"
+serde = { version = "1.0.188", features = ["derive"] }
+serde_json = "1.0.107"
+surrealdb = { version = "1.0.0", features = ["kv-mem"] }
+tokio = { version = "1.32.0", features = ["full"] }
+tokio-util = { version = "0.7.8", features = ["io-util", "rt"] }
+uuid = { version = "1.4.1", features = ["v4", "fast-rng"] }
