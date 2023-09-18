@@ -1,12 +1,10 @@
+use crate::types::ClientProtocol;
+use bpaf::{construct, short, OptionParser, Parser};
+use machineid_rs::{HWIDComponent, IdBuilder};
 use std::io::{self, Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::{process, thread};
-
-use bpaf::{construct, short, OptionParser, Parser};
-use machineid_rs::{HWIDComponent, IdBuilder};
 use types::ServerProtocol;
-
-use crate::types::ClientProtocol;
 
 mod types;
 
@@ -24,29 +22,31 @@ fn opts() -> OptionParser<Opt> {
         .long("name")
         .help("Your username")
         .argument("String")
-        .fallback(format!("User{}", rand::prelude::random::<i32>()));
+        .fallback(format!("User{}", rand::prelude::random::<i16>()));
 
     let addr = short('a')
         .long("addr")
         .help("Change your address to connect to")
         .argument("SocketAddr")
-        .fallback("0.0.0.0:7878".parse().unwrap());
+        .fallback("127.0.0.1:7878".parse().unwrap());
 
     construct!(Opt { name, addr })
         .to_options()
-        .footer("Helo")
+        .footer("Copyright (c) 2023 Phill030")
         .descr("Hmmm")
 }
 
 fn main() -> io::Result<()> {
+    let opts = opts().run();
+
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    let stream = TcpStream::connect("127.0.0.1:7878").expect("Can't connect to server!");
+    let stream = TcpStream::connect(opts.addr)?;
     log::info!("Connected to server");
     // Send authentication message to server
     request_authentication(&stream);
 
-    let read_stream = stream.try_clone().expect("Clone failed");
+    let read_stream = stream.try_clone()?;
     thread::spawn(move || {
         read_messages(read_stream);
     });
@@ -118,12 +118,12 @@ fn read_messages(mut stream: TcpStream) {
     }
 }
 
-fn request_authentication(mut stream: &TcpStream) -> () {
+fn request_authentication(stream: &TcpStream) -> () {
     let message = ClientProtocol::RequestAuthentication {
         hwid: construct_hwid(),
     };
 
-    if !write_to_stream(&stream, message) {
+    if !write_to_stream(stream, message) {
         log::error!("Error authenticating");
         process::exit(0);
     }
