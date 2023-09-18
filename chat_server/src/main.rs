@@ -41,9 +41,9 @@ async fn main() -> std::io::Result<()> {
 
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    let db = Surreal::new::<Mem>(()).await.unwrap();
-    db.use_ns("chat").use_db("clients").await.unwrap();
-    let db_client = Arc::new(db);
+    // let db = Surreal::new::<Mem>(()).await.unwrap();
+    // db.use_ns("chat").use_db("clients").await.unwrap();
+    // let db_client = Arc::new(db);
 
     Server::create(opts.endpoint).await?;
 
@@ -51,7 +51,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 pub struct Server {
-    pub connected_clients: Arc<Mutex<HashMap<Client, TcpStream>>>,
+    pub connected_clients: Arc<Mutex<HashMap<String, TcpStream>>>,
     pub tcp_listener: TcpListener,
 }
 
@@ -71,6 +71,8 @@ impl Server {
                         let mut hwid: Option<String> = None;
 
                         {
+                            let connected_clients = connected_clients.clone();
+
                             // We need the HWID here so we can identify the client
                             while hwid.is_none() {
                                 log::info!("Waiting for HWID...");
@@ -80,22 +82,22 @@ impl Server {
                                 }
                             }
                             // TODO: Check if HWID already exists, if not create entry with UUID
-                            let hwid = hwid.unwrap();
+                            let hwid = hwid.clone().unwrap();
                             log::info!("Found Hwid [{}]", hwid);
 
                             let token = uuid::Uuid::new_v4().to_string();
-                            let current_time = SystemTime::now()
-                                .duration_since(UNIX_EPOCH)
-                                .unwrap()
-                                .as_secs();
+                            // let current_time = SystemTime::now()
+                            //     .duration_since(UNIX_EPOCH)
+                            //     .unwrap()
+                            //     .as_secs();
 
-                            let client = Client {
-                                hwid,
-                                session_token: Some(token.clone()),
-                                name: "Username".to_string(),
-                                first_connection: current_time,
-                                last_connection: current_time,
-                            };
+                            // let client = Client {
+                            //     hwid,
+                            //     session_token: Some(token.clone()),
+                            //     name: "Username".to_string(),
+                            //     first_connection: current_time,
+                            //     last_connection: current_time,
+                            // };
 
                             let message = ServerProtocol::AuthenticateToken { token };
                             write_to_stream(&stream, message);
@@ -103,7 +105,7 @@ impl Server {
                             connected_clients
                                 .lock()
                                 .expect("Can't lock clients")
-                                .insert(client, stream.try_clone().unwrap());
+                                .insert(hwid, stream.try_clone().unwrap());
 
                             log::info!("{:#?}", connected_clients.lock().unwrap());
 
@@ -112,8 +114,15 @@ impl Server {
                                 .unwrap();
                         }
 
-                        // This will trigger after the client is disconnected!
+                        // This will trigger after the client is disconnected & removes them from the HashMap
                         log::info!("Client disconnected");
+                        connected_clients
+                            .as_ref()
+                            .lock()
+                            .expect("Unable to lock variable")
+                            .remove(&hwid.clone().unwrap());
+
+                        log::info!("{:#?}", connected_clients.lock().unwrap());
                     });
                     // We do not join the threads because then only one connections works at a time!
                 }
@@ -132,7 +141,7 @@ impl Server {
 
     async fn handle_connection(
         stream: TcpStream,
-        clients: Arc<Mutex<HashMap<Client, TcpStream>>>,
+        clients: Arc<Mutex<HashMap<String, TcpStream>>>,
     ) -> std::io::Result<()> {
         let mut buffer = [0; 1024];
 
@@ -162,7 +171,7 @@ impl Server {
                                 match clients.lock() {
                                     Ok(lock) => {
                                         for (client, client_stream) in lock.iter() {
-                                            if client.hwid == hwid {
+                                            if client.eq(&hwid) {
                                                 continue;
                                             }
 
@@ -194,43 +203,13 @@ impl Server {
                     buffer = [0; 1024];
                 }
                 Err(why) => {
-                    log::error!("Error reading from client, {}", why);
-                    // The loop breaks when the client disconnects & needs to be removed from connected_client list
-                    // self.remove_client_by_uid(uid)
+                    log::error!("{}", why);
                     break;
                 }
             }
         }
 
         Ok(())
-    }
-
-    pub fn find_connected_client(&self, uid: &str) -> Option<Client> {
-        match self.connected_clients.lock() {
-            Ok(lock) => {
-                let mut vec = lock.keys().cloned();
-                vec.find(|c| c.hwid == uid)
-            }
-            Err(why) => {
-                log::error!("There was an error locking the value, {}", why);
-                None
-            }
-        }
-    }
-
-    pub fn remove_client_by_hwid(&self, hwid: &str) -> bool {
-        let client = self.find_connected_client(hwid);
-        match client {
-            Some(c) => {
-                if let Ok(mut lock) = self.connected_clients.lock() {
-                    lock.remove(&c);
-                    true
-                } else {
-                    false
-                }
-            }
-            None => false,
-        }
     }
 }
 
