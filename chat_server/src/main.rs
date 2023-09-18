@@ -6,15 +6,12 @@ use std::{
     net::{SocketAddr, TcpListener, TcpStream},
     process,
     sync::{Arc, Mutex},
-    time::{SystemTime, UNIX_EPOCH},
 };
-use surrealdb::{
-    engine::local::{Db, Mem},
-    Surreal,
-};
-use types::{Client, ClientProtocol};
+use types::ClientProtocol;
 
 mod types;
+
+const BUFFER_SIZE: usize = 2048;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -67,6 +64,7 @@ impl Server {
                     let connected_clients = connected_clients.clone();
                     log::info!("{} connected,", stream.peer_addr()?);
 
+                    // Each client get's a custom thread
                     tokio::spawn(async move {
                         let mut hwid: Option<String> = None;
 
@@ -76,11 +74,11 @@ impl Server {
                             // We need the HWID here so we can identify the client
                             while hwid.is_none() {
                                 log::info!("Waiting for HWID...");
-                                match handle_auth(&stream) {
-                                    Some(id) => hwid = Some(id),
-                                    None => {}
+                                if let Some(id) = handle_auth(&stream) {
+                                    hwid = Some(id);
                                 }
                             }
+
                             // TODO: Check if HWID already exists, if not create entry with UUID
                             let hwid = hwid.clone().unwrap();
                             log::info!("Found Hwid [{}]", hwid);
@@ -100,7 +98,7 @@ impl Server {
                             // };
 
                             let message = ServerProtocol::AuthenticateToken { token };
-                            write_to_stream(&stream, message);
+                            write_to_stream(&stream, &message);
 
                             connected_clients
                                 .lock()
@@ -109,9 +107,7 @@ impl Server {
 
                             log::info!("{:#?}", connected_clients.lock().unwrap());
 
-                            Self::handle_connection(stream, connected_clients)
-                                .await
-                                .unwrap();
+                            Self::handle_connection(&stream, &connected_clients).unwrap();
                         }
 
                         // This will trigger after the client is disconnected & removes them from the HashMap
@@ -139,11 +135,11 @@ impl Server {
         })
     }
 
-    async fn handle_connection(
-        stream: TcpStream,
-        clients: Arc<Mutex<HashMap<String, TcpStream>>>,
+    fn handle_connection(
+        stream: &TcpStream,
+        clients: &Arc<Mutex<HashMap<String, TcpStream>>>,
     ) -> std::io::Result<()> {
-        let mut buffer = [0; 1024];
+        let mut buffer = [0; BUFFER_SIZE];
 
         let mut stream_cloned = stream.try_clone()?;
         loop {
@@ -170,7 +166,7 @@ impl Server {
                                 log::info!("{} said {}", hwid.clone(), content.clone());
                                 match clients.lock() {
                                     Ok(lock) => {
-                                        for (client, client_stream) in lock.iter() {
+                                        for (client, client_stream) in &*lock {
                                             if client.eq(&hwid) {
                                                 continue;
                                             }
@@ -180,7 +176,7 @@ impl Server {
                                                 sender: hwid.clone(),
                                                 content: content.clone(),
                                             };
-                                            write_to_stream(client_stream, message);
+                                            write_to_stream(client_stream, &message);
                                         }
                                     }
                                     Err(_) => {
@@ -200,7 +196,7 @@ impl Server {
                     }
 
                     // Clear the buffer
-                    buffer = [0; 1024];
+                    buffer = [0; BUFFER_SIZE];
                 }
                 Err(why) => {
                     log::error!("{}", why);
@@ -208,12 +204,11 @@ impl Server {
                 }
             }
         }
-
         Ok(())
     }
 }
 
-fn write_to_stream<T>(mut stream: &TcpStream, content: T)
+fn write_to_stream<T>(mut stream: &TcpStream, content: &T)
 where
     T: serde::Deserialize<'static> + serde::Serialize, // struct T must have trait Serialize & Deserialize
 {
@@ -242,17 +237,15 @@ fn handle_auth(mut stream: &TcpStream) -> Option<String> {
                 serde_json::from_str(&incoming_message);
 
             match deserialized_message {
-                Ok(client_message) => match client_message {
-                    ClientProtocol::RequestAuthentication { hwid } => return Some(hwid),
-
-                    _ => {
-                        log::error!("Received invalid event!");
-                        return None;
+                Ok(client_message) => {
+                    if let ClientProtocol::RequestAuthentication { hwid } = client_message {
+                        Some(hwid)
+                    } else {
+                        log::error!("Received invalid event before authentication!");
+                        None
                     }
-                },
-                Err(_) => {
-                    return None;
                 }
+                Err(_) => None,
             }
         }
 
