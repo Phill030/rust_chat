@@ -9,6 +9,7 @@ use types::ServerProtocol;
 mod types;
 
 static KEY: &str = "1234567890";
+const BUFFER_SIZE: usize = 2048;
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -65,12 +66,12 @@ fn main() -> io::Result<()> {
             content: trimmed_input.to_owned(),
         };
 
-        write_to_stream(&stream, message);
+        write_to_stream(&stream, &message);
     }
 }
 
 fn read_messages(mut stream: TcpStream) {
-    let mut buffer = [0; 1024];
+    let mut buffer = [0; BUFFER_SIZE];
 
     loop {
         match stream.read(&mut buffer) {
@@ -103,27 +104,27 @@ fn read_messages(mut stream: TcpStream) {
                         }
                     },
                     Err(_) => {
-                        log::warn!("Error parsing client message")
+                        log::warn!("Error parsing client message");
                     }
                 }
 
                 // Clear the buffer
-                buffer = [0; 1024];
+                buffer = [0; BUFFER_SIZE];
             }
             Err(why) => {
-                println!("Error reading from server! {}", why);
+                println!("Error reading from server! {why}");
                 process::exit(0);
             }
         }
     }
 }
 
-fn request_authentication(stream: &TcpStream) -> () {
+fn request_authentication(stream: &TcpStream) {
     let message = ClientProtocol::RequestAuthentication {
         hwid: construct_hwid(),
     };
 
-    if !write_to_stream(stream, message) {
+    if !write_to_stream(stream, &message) {
         log::error!("Error authenticating");
         process::exit(0);
     }
@@ -144,7 +145,7 @@ fn construct_hwid() -> String {
     }
 }
 
-fn write_to_stream<T>(mut stream: &TcpStream, content: T) -> bool
+fn write_to_stream<T>(mut stream: &TcpStream, content: &T) -> bool
 where
     T: serde::Deserialize<'static> + serde::Serialize, // struct T must have trait Serialize & Deserialize
 {
