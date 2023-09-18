@@ -44,7 +44,7 @@ async fn main() -> std::io::Result<()> {
     db.use_ns("chat").use_db("clients").await.unwrap();
     let db_client = Arc::new(db);
 
-    Server::create(opts.endpoint, db_client).await?;
+    Server::create(opts.endpoint).await?;
 
     Ok(())
 }
@@ -55,7 +55,7 @@ pub struct Server {
 }
 
 impl Server {
-    pub async fn create(endpoint: SocketAddr, db: Arc<Surreal<Db>>) -> std::io::Result<Server> {
+    pub async fn create(endpoint: SocketAddr) -> std::io::Result<Server> {
         let connected_clients = Arc::new(Mutex::new(HashMap::new()));
         let tcp_listener = TcpListener::bind(endpoint)?;
         log::info!("Server started @ {endpoint}");
@@ -63,14 +63,18 @@ impl Server {
         for stream in tcp_listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    log::info!("{} connected,", stream.peer_addr()?);
                     let connected_clients = connected_clients.clone();
-                    let db_client = db.clone();
+                    log::info!("{} connected,", stream.peer_addr()?);
 
                     tokio::spawn(async move {
-                        Self::handle_connection(stream, connected_clients, db_client)
-                            .await
-                            .unwrap();
+                        {
+                            Self::handle_connection(stream, connected_clients)
+                                .await
+                                .unwrap();
+                        }
+
+                        // This will trigger after the client is disconnected!
+                        log::info!("Client disconnected");
                     });
                     // We do not join the threads because then only one connections works at a time!
                 }
@@ -90,7 +94,6 @@ impl Server {
     async fn handle_connection(
         stream: TcpStream,
         clients: Arc<Mutex<HashMap<Client, TcpStream>>>,
-        db: Arc<Surreal<Db>>,
     ) -> std::io::Result<()> {
         let mut buffer = [0; 1024];
 
@@ -141,49 +144,27 @@ impl Server {
                                 // TODO: Check if HWID already exists, if not create entry with UUID
                                 log::info!("{hwid} requested authentication");
 
-                                let db_clients: Vec<Client> = db.select("client").await.unwrap();
-                                let client_position = db_clients.iter().find(|&c| c.hwid.eq(&hwid));
+                                let token = uuid::Uuid::new_v4().to_string();
+                                let last_connection = SystemTime::now()
+                                    .duration_since(UNIX_EPOCH)
+                                    .unwrap()
+                                    .as_secs();
 
-                                match client_position {
-                                    Some(client) => {
-                                        clients
-                                            .lock()
-                                            .expect("Unable to lock clients")
-                                            .insert(client.clone(), stream.try_clone()?);
+                                let client = Client {
+                                    hwid,
+                                    session_token: Some(token.clone()),
+                                    name: "Username".to_string(),
+                                    first_connection: last_connection,
+                                    last_connection,
+                                };
 
-                                        let message = ServerProtocol::AuthenticateToken {
-                                            token: client.token.clone(),
-                                        };
-                                        write_to_stream(&stream, message);
-                                    }
-                                    None => {
-                                        let token = uuid::Uuid::new_v4().to_string();
+                                let message = ServerProtocol::AuthenticateToken { token };
+                                write_to_stream(&stream, message);
 
-                                        let last_connection = SystemTime::now()
-                                            .duration_since(UNIX_EPOCH)
-                                            .unwrap()
-                                            .as_secs();
-
-                                        let client = Client {
-                                            hwid,
-                                            token: token.clone(),
-                                            name: "Username".to_string(),
-                                            first_connection: last_connection,
-                                            last_connection,
-                                        };
-
-                                        // Db::insert_client(prisma_client.clone(), client.clone())
-                                        // .await;
-
-                                        clients
-                                            .lock()
-                                            .expect("Can't lock clients")
-                                            .insert(client, stream.try_clone()?);
-
-                                        let message = ServerProtocol::AuthenticateToken { token };
-                                        write_to_stream(&stream, message);
-                                    }
-                                }
+                                clients
+                                    .lock()
+                                    .expect("Can't lock clients")
+                                    .insert(client, stream.try_clone()?);
                             }
 
                             // Every other message
