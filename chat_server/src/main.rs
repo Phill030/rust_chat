@@ -84,7 +84,7 @@ impl Server {
                             log::info!("Found Hwid [{}]", hwid);
 
                             let token = uuid::Uuid::new_v4().to_string();
-                            let last_connection = SystemTime::now()
+                            let current_time = SystemTime::now()
                                 .duration_since(UNIX_EPOCH)
                                 .unwrap()
                                 .as_secs();
@@ -93,8 +93,8 @@ impl Server {
                                 hwid,
                                 session_token: Some(token.clone()),
                                 name: "Username".to_string(),
-                                first_connection: last_connection,
-                                last_connection,
+                                first_connection: current_time,
+                                last_connection: current_time,
                             };
 
                             let message = ServerProtocol::AuthenticateToken { token };
