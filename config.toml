@@ -1,0 +1,2 @@
+endpoint = "0.0.0.0:7878"
+buffer_size = 2048
