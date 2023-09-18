@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub enum ServerProtocol {
     BroadcastMessage { sender: String, content: String },
@@ -18,4 +20,19 @@ pub struct Client {
     pub session_token: Option<String>,
     pub first_connection: u64,
     pub last_connection: u64,
+}
+
+#[derive(serde::Deserialize, serde::Serialize, Debug)]
+pub struct Config {
+    pub endpoint: SocketAddr,
+    pub buffer_size: usize,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            endpoint: "0.0.0.0:7878".parse().unwrap(),
+            buffer_size: 2048,
+        }
+    }
 }
