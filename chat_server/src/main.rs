@@ -1,3 +1,4 @@
+use crate::types::ServerProtocol;
 use bpaf::{construct, short, OptionParser, Parser};
 use std::{
     collections::HashMap,
@@ -12,8 +13,6 @@ use surrealdb::{
 };
 use types::{Client, ClientProtocol};
 
-use crate::types::ServerProtocol;
-
 mod types;
 
 #[allow(dead_code)]
@@ -25,7 +24,7 @@ struct Opt {
 fn opts() -> OptionParser<Opt> {
     let endpoint = short('e')
         .long("endpoint")
-        .help("Activate verbosity (Default: warn)")
+        .help("Override the endpoint clients will connect to")
         .argument("SocketAddr")
         .fallback("0.0.0.0:7878".parse().unwrap());
 
@@ -36,17 +35,18 @@ fn opts() -> OptionParser<Opt> {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> std::io::Result<()> {
     let opts = opts().run();
-    println!("{:#?}", opts);
+
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     let db = Surreal::new::<Mem>(()).await.unwrap();
     db.use_ns("chat").use_db("clients").await.unwrap();
-
     let db_client = Arc::new(db);
 
-    Server::create(opts.endpoint, db_client).await;
+    Server::create(opts.endpoint, db_client).await?;
+
+    Ok(())
 }
 
 pub struct Server {
@@ -55,21 +55,22 @@ pub struct Server {
 }
 
 impl Server {
-    pub async fn create(endpoint: SocketAddr, db: Arc<Surreal<Db>>) -> Server {
-        log::info!("Server created");
-
+    pub async fn create(endpoint: SocketAddr, db: Arc<Surreal<Db>>) -> std::io::Result<Server> {
         let connected_clients = Arc::new(Mutex::new(HashMap::new()));
-        let tcp_listener = TcpListener::bind(endpoint).unwrap();
+        let tcp_listener = TcpListener::bind(endpoint)?;
+        log::info!("Server started @ {endpoint}");
 
         for stream in tcp_listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    log::info!("{} connected,", stream.peer_addr().unwrap());
+                    log::info!("{} connected,", stream.peer_addr()?);
                     let connected_clients = connected_clients.clone();
                     let db_client = db.clone();
 
                     tokio::spawn(async move {
-                        Self::handle_connection(stream, connected_clients, db_client).await;
+                        Self::handle_connection(stream, connected_clients, db_client)
+                            .await
+                            .unwrap();
                     });
                     // We do not join the threads because then only one connections works at a time!
                 }
@@ -80,20 +81,20 @@ impl Server {
             }
         }
 
-        Server {
+        Ok(Server {
             connected_clients,
             tcp_listener,
-        }
+        })
     }
 
     async fn handle_connection(
         stream: TcpStream,
         clients: Arc<Mutex<HashMap<Client, TcpStream>>>,
         db: Arc<Surreal<Db>>,
-    ) {
+    ) -> std::io::Result<()> {
         let mut buffer = [0; 1024];
 
-        let mut stream_cloned = stream.try_clone().unwrap();
+        let mut stream_cloned = stream.try_clone()?;
         loop {
             match stream_cloned.read(&mut buffer) {
                 Ok(bytes_read) => {
@@ -148,7 +149,7 @@ impl Server {
                                         clients
                                             .lock()
                                             .expect("Unable to lock clients")
-                                            .insert(client.clone(), stream.try_clone().unwrap());
+                                            .insert(client.clone(), stream.try_clone()?);
 
                                         let message = ServerProtocol::AuthenticateToken {
                                             token: client.token.clone(),
@@ -177,7 +178,7 @@ impl Server {
                                         clients
                                             .lock()
                                             .expect("Can't lock clients")
-                                            .insert(client, stream.try_clone().unwrap());
+                                            .insert(client, stream.try_clone()?);
 
                                         let message = ServerProtocol::AuthenticateToken { token };
                                         write_to_stream(&stream, message);
@@ -206,6 +207,8 @@ impl Server {
                 }
             }
         }
+
+        Ok(())
     }
 
     pub fn find_connected_client(&self, uid: &str) -> Option<Client> {
