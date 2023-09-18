@@ -15,7 +15,7 @@ pub enum ClientProtocol {
 pub struct Client {
     pub name: String,
     pub hwid: String,
-    pub token: String,
+    pub session_token: Option<String>,
     pub first_connection: u64,
     pub last_connection: u64,
 }
