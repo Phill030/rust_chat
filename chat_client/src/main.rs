@@ -91,7 +91,7 @@ fn read_messages(mut stream: TcpStream) {
                             log::info!("Received message {content} from {sender}");
                         }
                         ServerProtocol::AuthenticateToken { token } => {
-                            log::info!("Server-Verified Token: {}", token);
+                            log::info!("Session-Token: {}", token);
                         }
 
                         // Every other message
@@ -112,7 +112,7 @@ fn read_messages(mut stream: TcpStream) {
             }
             Err(why) => {
                 println!("Error reading from server! {}", why);
-                break;
+                process::exit(0);
             }
         }
     }
