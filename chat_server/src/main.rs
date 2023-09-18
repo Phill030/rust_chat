@@ -1,54 +1,37 @@
 use crate::types::ServerProtocol;
-use bpaf::{construct, short, OptionParser, Parser};
+use config::config::ConfigManager;
 use std::{
     collections::HashMap,
     io::{Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
     process,
     sync::{Arc, Mutex},
+    time::{SystemTime, UNIX_EPOCH},
 };
-use types::ClientProtocol;
+use types::{Client, ClientProtocol};
 
-mod types;
+pub mod config;
+pub mod error;
+pub mod types;
 
 const BUFFER_SIZE: usize = 2048;
 
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-struct Opt {
-    endpoint: SocketAddr,
-}
-
-fn opts() -> OptionParser<Opt> {
-    let endpoint = short('e')
-        .long("endpoint")
-        .help("Override the endpoint clients will connect to")
-        .argument("SocketAddr")
-        .fallback("0.0.0.0:7878".parse().unwrap());
-
-    construct!(Opt { endpoint })
-        .to_options()
-        .footer("Copyright (c) 2023 Phill030")
-        .descr("Hmm")
-}
-
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    let opts = opts().run();
-
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
     // let db = Surreal::new::<Mem>(()).await.unwrap();
     // db.use_ns("chat").use_db("clients").await.unwrap();
     // let db_client = Arc::new(db);
 
-    Server::create(opts.endpoint).await?;
+    let config = ConfigManager::initialize_or_create().await.unwrap();
+    Server::create(config.endpoint).await?;
 
     Ok(())
 }
 
 pub struct Server {
-    pub connected_clients: Arc<Mutex<HashMap<String, TcpStream>>>,
+    pub connected_clients: Arc<Mutex<HashMap<String, (TcpStream, Client)>>>,
     pub tcp_listener: TcpListener,
 }
 
@@ -84,18 +67,18 @@ impl Server {
                             log::info!("Found Hwid [{}]", hwid);
 
                             let token = uuid::Uuid::new_v4().to_string();
-                            // let current_time = SystemTime::now()
-                            //     .duration_since(UNIX_EPOCH)
-                            //     .unwrap()
-                            //     .as_secs();
+                            let current_time = SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .unwrap()
+                                .as_secs();
 
-                            // let client = Client {
-                            //     hwid,
-                            //     session_token: Some(token.clone()),
-                            //     name: "Username".to_string(),
-                            //     first_connection: current_time,
-                            //     last_connection: current_time,
-                            // };
+                            let client = Client {
+                                hwid: hwid.clone(),
+                                session_token: Some(token.clone()),
+                                name: "Username".to_string(),
+                                first_connection: current_time,
+                                last_connection: current_time,
+                            };
 
                             let message = ServerProtocol::AuthenticateToken { token };
                             write_to_stream(&stream, &message);
@@ -103,7 +86,7 @@ impl Server {
                             connected_clients
                                 .lock()
                                 .expect("Can't lock clients")
-                                .insert(hwid, stream.try_clone().unwrap());
+                                .insert(hwid, (stream.try_clone().unwrap(), client));
 
                             log::info!("{:#?}", connected_clients.lock().unwrap());
 
@@ -137,7 +120,7 @@ impl Server {
 
     fn handle_connection(
         stream: &TcpStream,
-        clients: &Arc<Mutex<HashMap<String, TcpStream>>>,
+        clients: &Arc<Mutex<HashMap<String, (TcpStream, Client)>>>,
     ) -> std::io::Result<()> {
         let mut buffer = [0; BUFFER_SIZE];
 
@@ -166,7 +149,7 @@ impl Server {
                                 log::info!("{} said {}", hwid.clone(), content.clone());
                                 match clients.lock() {
                                     Ok(lock) => {
-                                        for (client, client_stream) in &*lock {
+                                        for (client, (client_stream, _)) in &*lock {
                                             if client.eq(&hwid) {
                                                 continue;
                                             }
