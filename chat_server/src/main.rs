@@ -4,6 +4,7 @@ use std::{
     collections::HashMap,
     io::{Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
+    process,
     sync::{Arc, Mutex},
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -67,7 +68,45 @@ impl Server {
                     log::info!("{} connected,", stream.peer_addr()?);
 
                     tokio::spawn(async move {
+                        let mut hwid: Option<String> = None;
+
                         {
+                            // We need the HWID here so we can identify the client
+                            while hwid.is_none() {
+                                log::info!("Waiting for HWID...");
+                                match handle_auth(&stream) {
+                                    Some(id) => hwid = Some(id),
+                                    None => {}
+                                }
+                            }
+                            // TODO: Check if HWID already exists, if not create entry with UUID
+                            let hwid = hwid.unwrap();
+                            log::info!("Found Hwid [{}]", hwid);
+
+                            let token = uuid::Uuid::new_v4().to_string();
+                            let last_connection = SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .unwrap()
+                                .as_secs();
+
+                            let client = Client {
+                                hwid,
+                                session_token: Some(token.clone()),
+                                name: "Username".to_string(),
+                                first_connection: last_connection,
+                                last_connection,
+                            };
+
+                            let message = ServerProtocol::AuthenticateToken { token };
+                            write_to_stream(&stream, message);
+
+                            connected_clients
+                                .lock()
+                                .expect("Can't lock clients")
+                                .insert(client, stream.try_clone().unwrap());
+
+                            log::info!("{:#?}", connected_clients.lock().unwrap());
+
                             Self::handle_connection(stream, connected_clients)
                                 .await
                                 .unwrap();
@@ -140,32 +179,6 @@ impl Server {
                                     }
                                 }
                             }
-                            ClientProtocol::RequestAuthentication { hwid } => {
-                                // TODO: Check if HWID already exists, if not create entry with UUID
-                                log::info!("{hwid} requested authentication");
-
-                                let token = uuid::Uuid::new_v4().to_string();
-                                let last_connection = SystemTime::now()
-                                    .duration_since(UNIX_EPOCH)
-                                    .unwrap()
-                                    .as_secs();
-
-                                let client = Client {
-                                    hwid,
-                                    session_token: Some(token.clone()),
-                                    name: "Username".to_string(),
-                                    first_connection: last_connection,
-                                    last_connection,
-                                };
-
-                                let message = ServerProtocol::AuthenticateToken { token };
-                                write_to_stream(&stream, message);
-
-                                clients
-                                    .lock()
-                                    .expect("Can't lock clients")
-                                    .insert(client, stream.try_clone()?);
-                            }
 
                             // Every other message
                             _ => {
@@ -221,17 +234,6 @@ impl Server {
     }
 }
 
-fn is_disconnected(stream: &TcpStream) -> bool {
-    // Attempt to read a small amount of data from the client.
-    // If the read operation returns an error or 0 bytes read, consider the client disconnected.
-    let mut buffer = [0; 1]; // You can adjust the buffer size as needed.
-    match stream.peek(&mut buffer) {
-        Ok(0) => true,  // 0 bytes read indicates a closed connection.
-        Err(_) => true, // An error occurred, assuming the client disconnected.
-        _ => false,     // Client is still connected.
-    }
-}
-
 fn write_to_stream<T>(mut stream: &TcpStream, content: T)
 where
     T: serde::Deserialize<'static> + serde::Serialize, // struct T must have trait Serialize & Deserialize
@@ -242,5 +244,42 @@ where
         log::warn!("[❌] There was an error broadcasting the message");
     } else {
         log::info!("[✔] Message broadcasted!");
+    }
+}
+
+fn handle_auth(mut stream: &TcpStream) -> Option<String> {
+    let mut buffer = [0; 1024];
+
+    match stream.read(&mut buffer) {
+        Ok(bytes_read) => {
+            if bytes_read == 0 {
+                log::info!("Client disconnected");
+                process::exit(0);
+            }
+
+            let incoming_message = String::from_utf8_lossy(&buffer[0..bytes_read]).to_string();
+
+            let deserialized_message: Result<ClientProtocol, _> =
+                serde_json::from_str(&incoming_message);
+
+            match deserialized_message {
+                Ok(client_message) => match client_message {
+                    ClientProtocol::RequestAuthentication { hwid } => return Some(hwid),
+
+                    _ => {
+                        log::error!("Received invalid event!");
+                        return None;
+                    }
+                },
+                Err(_) => {
+                    return None;
+                }
+            }
+        }
+
+        Err(why) => {
+            log::error!("Unable to read from stream! {why}");
+            process::exit(0);
+        }
     }
 }
