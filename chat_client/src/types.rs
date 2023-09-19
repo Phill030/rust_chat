@@ -23,7 +23,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            endpoint: "0.0.0.0:7878".parse().unwrap(),
+            endpoint: "127.0.0.1:7878".parse().unwrap(),
             buffer_size: 2048,
             name: format!("User{}", rand::prelude::random::<i16>()),
         }
