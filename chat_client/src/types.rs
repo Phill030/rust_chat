@@ -13,7 +13,7 @@ pub enum ClientProtocol {
     RequestAuthentication { hwid: String },
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct Config {
     pub endpoint: SocketAddr,
     pub buffer_size: usize,
