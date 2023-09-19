@@ -82,7 +82,7 @@ impl Server {
 
                             log::info!("{:#?}", connected_clients.lock().unwrap());
 
-                            Self::handle_connection(&stream, &connected_clients).unwrap();
+                            Self::handle_connection(&stream, &connected_clients);
                         }
 
                         // This will trigger after the client is disconnected & removes them from the HashMap
@@ -113,7 +113,7 @@ impl Server {
     fn handle_connection(
         mut stream: &TcpStream,
         clients: &Arc<Mutex<HashMap<String, (TcpStream, Client)>>>,
-    ) -> std::io::Result<()> {
+    ) {
         let mut buffer = [0; 1024];
 
         loop {
@@ -180,7 +180,6 @@ impl Server {
                 }
             }
         }
-        Ok(())
     }
 }
 

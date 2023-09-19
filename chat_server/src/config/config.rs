@@ -26,7 +26,7 @@ impl ConfigManager {
                 }
             }
 
-            return Ok(config);
+            Ok(config)
         } else {
             let mut contents = vec![];
             file.unwrap().read_to_end(&mut contents).await?;
