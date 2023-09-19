@@ -6,7 +6,6 @@ use std::{
     net::{SocketAddr, TcpListener, TcpStream},
     process,
     sync::{Arc, Mutex},
-    time::{SystemTime, UNIX_EPOCH},
 };
 use types::{Client, ClientProtocol};
 
@@ -14,7 +13,7 @@ pub mod config;
 pub mod error;
 pub mod types;
 
-const BUFFER_SIZE: usize = 2048;
+// const BUFFER_SIZE: usize = 2048;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -39,7 +38,7 @@ impl Server {
     pub async fn create(endpoint: SocketAddr) -> std::io::Result<Server> {
         let connected_clients = Arc::new(Mutex::new(HashMap::new()));
         let tcp_listener = TcpListener::bind(endpoint)?;
-        log::info!("Server started @ {endpoint}");
+        log::info!("Server started @ {:#?}", endpoint);
 
         for stream in tcp_listener.incoming() {
             match stream {
@@ -64,22 +63,16 @@ impl Server {
 
                             // TODO: Check if HWID already exists, if not create entry with UUID
                             let hwid = hwid.clone().unwrap();
+                            let session_token = uuid::Uuid::new_v4().to_string();
+                            let client = Client {
+                                session_token: Some(session_token.clone()),
+                                name: None,
+                            };
                             log::info!("Found Hwid [{}]", hwid);
 
-                            let token = uuid::Uuid::new_v4().to_string();
-                            let current_time = SystemTime::now()
-                                .duration_since(UNIX_EPOCH)
-                                .unwrap()
-                                .as_secs();
-
-                            let client = Client {
-                                session_token: Some(token.clone()),
-                                name: "Username".to_string(),
-                                first_connection: current_time,
-                                last_connection: current_time,
+                            let message = ServerProtocol::AuthenticateToken {
+                                token: session_token,
                             };
-
-                            let message = ServerProtocol::AuthenticateToken { token };
                             write_to_stream(&stream, &message);
 
                             connected_clients
@@ -118,14 +111,13 @@ impl Server {
     }
 
     fn handle_connection(
-        stream: &TcpStream,
+        mut stream: &TcpStream,
         clients: &Arc<Mutex<HashMap<String, (TcpStream, Client)>>>,
     ) -> std::io::Result<()> {
-        let mut buffer = [0; BUFFER_SIZE];
+        let mut buffer = [0; 1024];
 
-        let mut stream_cloned = stream.try_clone()?;
         loop {
-            match stream_cloned.read(&mut buffer) {
+            match stream.read(&mut buffer) {
                 Ok(bytes_read) => {
                     if bytes_read == 0 {
                         log::info!("Client disconnected");
@@ -134,6 +126,8 @@ impl Server {
 
                     let incoming_message =
                         String::from_utf8_lossy(&buffer[0..bytes_read]).to_string();
+
+                    log::info!("{incoming_message}");
 
                     let deserialized_message: Result<ClientProtocol, _> =
                         serde_json::from_str(&incoming_message);
@@ -178,7 +172,7 @@ impl Server {
                     }
 
                     // Clear the buffer
-                    buffer = [0; BUFFER_SIZE];
+                    buffer = [0; 1024];
                 }
                 Err(why) => {
                     log::error!("{}", why);
@@ -204,6 +198,7 @@ where
 }
 
 fn handle_auth(mut stream: &TcpStream) -> Option<String> {
+    // Doesn't need to be bigger since it's just the HWID Authorization event
     let mut buffer = [0; 1024];
 
     match stream.read(&mut buffer) {
