@@ -377,12 +377,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bpaf"
-version = "0.9.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dc3b1bd654a8d16eea03586c3eee8ffd25c7f242b9eae9730cc442834fe56d9"
-
-[[package]]
 name = "bumpalo"
 version = "3.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -503,7 +497,6 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 name = "chat_client"
 version = "0.1.0"
 dependencies = [
- "bpaf",
  "env_logger",
  "futures",
  "log",
@@ -512,8 +505,10 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+ "thiserror",
  "tokio",
  "tokio-util",
+ "toml 0.8.0",
 ]
 
 [[package]]
