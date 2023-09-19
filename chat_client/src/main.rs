@@ -1,50 +1,28 @@
+use crate::config::config::ConfigManager;
 use crate::types::ClientProtocol;
-use bpaf::{construct, short, OptionParser, Parser};
 use machineid_rs::{HWIDComponent, IdBuilder};
 use std::io::{self, Read, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::net::TcpStream;
 use std::{process, thread};
 use types::ServerProtocol;
 
+mod config;
+mod error;
 mod types;
 
 static KEY: &str = "1234567890";
 const BUFFER_SIZE: usize = 2048;
 
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-struct Opt {
-    name: String,
-    addr: SocketAddr,
-}
-
-fn opts() -> OptionParser<Opt> {
-    let name = short('n')
-        .long("name")
-        .help("Your username")
-        .argument("String")
-        .fallback(format!("User{}", rand::prelude::random::<i16>()));
-
-    let addr = short('a')
-        .long("addr")
-        .help("Change your address to connect to")
-        .argument("SocketAddr")
-        .fallback("127.0.0.1:7878".parse().unwrap());
-
-    construct!(Opt { name, addr })
-        .to_options()
-        .footer("Copyright (c) 2023 Phill030")
-        .descr("Hmmm")
-}
-
-fn main() -> io::Result<()> {
-    let opts = opts().run();
-
+#[tokio::main]
+async fn main() -> io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    let stream = TcpStream::connect(opts.addr)?;
+    let config = ConfigManager::initialize_or_create().await.unwrap();
+    let stream = TcpStream::connect(config.endpoint)?;
+
     log::info!("Connected to server");
-    // Send authentication message to server
+
+    // It is required to send the HWID to the server to authorize with it
     request_authentication(&stream);
 
     let read_stream = stream.try_clone()?;
