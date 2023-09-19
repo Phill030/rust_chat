@@ -15,10 +15,15 @@ pub enum ClientProtocol {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Client {
+    /// A custom name of the client
     pub name: String,
     // pub hwid: String,
+    /// A Session-Token is a randomly generated String which changes on every reconnect.
+    /// It can be used to validate the session of a client.
     pub session_token: Option<String>,
+    /// First connection of the client in seconds since 1970
     pub first_connection: u64,
+    /// Last connection of the client in seconds since 1970
     pub last_connection: u64,
 }
 
