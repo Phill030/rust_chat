@@ -4,14 +4,13 @@ use machineid_rs::{HWIDComponent, IdBuilder};
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
 use std::{process, thread};
-use types::ServerProtocol;
+use types::{Config, ServerProtocol};
 
 mod config;
 mod error;
 mod types;
 
 static KEY: &str = "1234567890";
-const BUFFER_SIZE: usize = 2048;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
@@ -26,8 +25,9 @@ async fn main() -> io::Result<()> {
     request_authentication(&stream);
 
     let read_stream = stream.try_clone()?;
+    let cloned_config = config.clone();
     thread::spawn(move || {
-        read_messages(read_stream);
+        read_messages(read_stream, &cloned_config);
     });
 
     loop {
@@ -48,8 +48,8 @@ async fn main() -> io::Result<()> {
     }
 }
 
-fn read_messages(mut stream: TcpStream) {
-    let mut buffer = [0; BUFFER_SIZE];
+fn read_messages(mut stream: TcpStream, config: &Config) {
+    let mut buffer = vec![0; config.buffer_size];
 
     loop {
         match stream.read(&mut buffer) {
@@ -87,7 +87,7 @@ fn read_messages(mut stream: TcpStream) {
                 }
 
                 // Clear the buffer
-                buffer = [0; BUFFER_SIZE];
+                buffer = vec![0; config.buffer_size];
             }
             Err(why) => {
                 println!("Error reading from server! {why}");
