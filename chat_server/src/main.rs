@@ -73,7 +73,6 @@ impl Server {
                                 .as_secs();
 
                             let client = Client {
-                                hwid: hwid.clone(),
                                 session_token: Some(token.clone()),
                                 name: "Username".to_string(),
                                 first_connection: current_time,

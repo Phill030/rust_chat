@@ -16,7 +16,7 @@ pub enum ClientProtocol {
 #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Client {
     pub name: String,
-    pub hwid: String,
+    // pub hwid: String,
     pub session_token: Option<String>,
     pub first_connection: u64,
     pub last_connection: u64,
