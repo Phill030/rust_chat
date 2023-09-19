@@ -4,7 +4,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
-const CONFIG_NAME: &str = "config.toml";
+const CONFIG_NAME: &str = "server_config.toml";
 pub struct ConfigManager;
 
 impl ConfigManager {
