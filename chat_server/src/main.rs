@@ -1,4 +1,4 @@
-use crate::types::ServerProtocol;
+use crate::{event_handler::EventHandler, types::ServerProtocol};
 use config::config::ConfigManager;
 use std::{
     collections::HashMap,
@@ -11,6 +11,7 @@ use types::{Client, ClientProtocol};
 
 pub mod config;
 pub mod error;
+pub mod event_handler;
 pub mod types;
 
 // const BUFFER_SIZE: usize = 2048;
@@ -56,7 +57,7 @@ impl Server {
                             // We need the HWID here so we can identify the client
                             while hwid.is_none() {
                                 log::info!("Waiting for HWID...");
-                                if let Some(id) = handle_auth(&stream) {
+                                if let Some(id) = EventHandler::handle_auth(&stream) {
                                     hwid = Some(id);
                                 }
                             }
@@ -86,14 +87,12 @@ impl Server {
                         }
 
                         // This will trigger after the client is disconnected & removes them from the HashMap
-                        log::info!("Client disconnected");
-                        connected_clients
-                            .as_ref()
-                            .lock()
-                            .expect("Unable to lock variable")
-                            .remove(&hwid.clone().unwrap());
+                        let mut connected_locked =
+                            connected_clients.lock().expect("Unable to lock variable");
+                        connected_locked.remove(&hwid.clone().unwrap());
 
-                        log::info!("{:#?}", connected_clients.lock().unwrap());
+                        log::info!("Client disconnected");
+                        log::info!("{:#?}", connected_locked);
                     });
                     // We do not join the threads because then only one connections works at a time!
                 }
@@ -135,36 +134,15 @@ impl Server {
                     match deserialized_message {
                         Ok(client_message) => match client_message {
                             ClientProtocol::ChangeUsername { hwid, new_username } => {
-                                log::info!("{hwid} changed their username to {new_username}");
+                                EventHandler::handle_change_username(&hwid, &new_username);
                             }
 
                             ClientProtocol::SendMessage { hwid, content } => {
-                                log::info!("{} said {}", hwid.clone(), content.clone());
-                                match clients.lock() {
-                                    Ok(lock) => {
-                                        for (client, (client_stream, _)) in &*lock {
-                                            if client.eq(&hwid) {
-                                                continue;
-                                            }
-
-                                            // The message which get's sent to everyone else
-                                            let message = ServerProtocol::BroadcastMessage {
-                                                sender: hwid.clone(),
-                                                content: content.clone(),
-                                            };
-                                            write_to_stream(client_stream, &message);
-                                        }
-                                    }
-                                    Err(_) => {
-                                        log::error!("There was an error locking the value");
-                                    }
-                                }
+                                EventHandler::handle_send_message(&hwid, &content, &clients)
                             }
 
                             // Every other message
-                            _ => {
-                                log::warn!("Received unknown message {:#?}", client_message);
-                            }
+                            _ => EventHandler::handle_unknown_message(client_message),
                         },
                         Err(why) => {
                             log::error!("Error parsing client message, {}", why);
@@ -193,41 +171,5 @@ where
         log::warn!("[❌] There was an error broadcasting the message");
     } else {
         log::info!("[✔] Message broadcasted!");
-    }
-}
-
-fn handle_auth(mut stream: &TcpStream) -> Option<String> {
-    // Doesn't need to be bigger since it's just the HWID Authorization event
-    let mut buffer = [0; 1024];
-
-    match stream.read(&mut buffer) {
-        Ok(bytes_read) => {
-            if bytes_read == 0 {
-                log::info!("Client disconnected");
-                process::exit(0);
-            }
-
-            let incoming_message = String::from_utf8_lossy(&buffer[0..bytes_read]).to_string();
-
-            let deserialized_message: Result<ClientProtocol, _> =
-                serde_json::from_str(&incoming_message);
-
-            match deserialized_message {
-                Ok(client_message) => {
-                    if let ClientProtocol::RequestAuthentication { hwid } = client_message {
-                        Some(hwid)
-                    } else {
-                        log::error!("Received invalid event before authentication!");
-                        None
-                    }
-                }
-                Err(_) => None,
-            }
-        }
-
-        Err(why) => {
-            log::error!("Unable to read from stream! {why}");
-            process::exit(0);
-        }
     }
 }
