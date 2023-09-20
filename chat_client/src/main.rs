@@ -26,7 +26,11 @@ async fn main() -> io::Result<()> {
     Ok(())
 }
 
-struct Client;
+#[derive(Clone, Debug)]
+struct Client {
+    session_token: String,
+}
+
 impl Client {
     fn new(stream: &TcpStream, config: &Config, hwid: &String) -> io::Result<()> {
         // It is required to send the HWID to the server to authorize with it
@@ -48,7 +52,7 @@ impl Client {
             }
 
             let message = ClientProtocol::SendMessage {
-                hwid: hwid.clone(), //TODO: replace
+                hwid: hwid.clone(),
                 content: trimmed_input.to_owned(),
             };
 
