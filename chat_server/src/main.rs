@@ -4,7 +4,6 @@ use std::{
     collections::HashMap,
     io::{Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
-    process,
     sync::{Arc, Mutex},
 };
 use types::{Client, ClientProtocol};
@@ -25,7 +24,7 @@ async fn main() -> std::io::Result<()> {
     // let db_client = Arc::new(db);
 
     let config = ConfigManager::initialize_or_create().await.unwrap();
-    Server::create(config.endpoint).await?;
+    Server::create(config.endpoint)?;
 
     Ok(())
 }
@@ -36,7 +35,7 @@ pub struct Server {
 }
 
 impl Server {
-    pub async fn create(endpoint: SocketAddr) -> std::io::Result<Server> {
+    pub fn create(endpoint: SocketAddr) -> std::io::Result<Server> {
         let connected_clients = Arc::new(Mutex::new(HashMap::new()));
         let tcp_listener = TcpListener::bind(endpoint)?;
         log::info!("Server started @ {:#?}", endpoint);
@@ -138,11 +137,11 @@ impl Server {
                             }
 
                             ClientProtocol::SendMessage { hwid, content } => {
-                                EventHandler::handle_send_message(&hwid, &content, &clients)
+                                EventHandler::handle_send_message(&hwid, &content, clients);
                             }
 
                             // Every other message
-                            _ => EventHandler::handle_unknown_message(client_message),
+                            _ => EventHandler::handle_unknown_message(&client_message),
                         },
                         Err(why) => {
                             log::error!("Error parsing client message, {}", why);
