@@ -82,7 +82,7 @@ impl EventHandler {
         log::info!("{hwid} changed their username to {new_username}");
     }
 
-    pub fn handle_unknown_message(client_message: ClientProtocol) {
+    pub fn handle_unknown_message(client_message: &ClientProtocol) {
         log::warn!("Received unknown message {:#?}", client_message);
     }
 }
