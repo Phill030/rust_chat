@@ -20,9 +20,6 @@ pub enum ClientProtocol<'a> {
         hwid: &'a str,
         name: &'a str,
     },
-    HeartBeat {
-        hwid: &'a str,
-    },
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
