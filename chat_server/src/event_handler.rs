@@ -20,17 +20,17 @@ impl EventHandler {
     ) {
         match clients.lock() {
             Ok(lock) => {
-                for (client_hwid, (client_stream, _)) in &*lock {
+                for (client_hwid, (client_stream, c)) in &*lock {
                     if client_hwid.eq(&hwid) {
-                        log::info!("{} said {}", client_hwid, content.clone());
+                        log::info!("{} --> {}", c.name, content.clone());
 
                         continue;
                     }
 
                     // The message which get's sent to everyone else
                     let message = ServerProtocol::BroadcastMessage {
-                        sender: hwid.to_string(),
-                        content: content.to_string(),
+                        sender: hwid,
+                        content,
                     };
 
                     write_to_stream(client_stream, &message);
@@ -42,7 +42,7 @@ impl EventHandler {
         }
     }
 
-    pub fn handle_auth(mut stream: &TcpStream) -> Option<String> {
+    pub fn handle_auth(mut stream: &TcpStream) -> Option<(String, String)> {
         // Doesn't need to be bigger since it's just the HWID Authorization event
         let mut buffer = [0; 1024];
 
@@ -60,8 +60,9 @@ impl EventHandler {
 
                 match deserialized_message {
                     Ok(client_message) => {
-                        if let ClientProtocol::RequestAuthentication { hwid } = client_message {
-                            Some(hwid)
+                        if let ClientProtocol::RequestAuthentication { hwid, name } = client_message
+                        {
+                            Some((hwid.to_string(), name.to_string()))
                         } else {
                             log::error!("Received invalid event before authentication!");
                             None
