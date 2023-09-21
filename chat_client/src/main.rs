@@ -3,7 +3,6 @@ use crate::types::ClientProtocol;
 use machineid_rs::{HWIDComponent, IdBuilder};
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
-use std::time::Duration;
 use std::{process, thread};
 use types::{Config, ServerProtocol};
 
@@ -41,15 +40,6 @@ impl Client {
         let cloned_config = config.clone();
         thread::spawn(move || {
             Self::read_messages(read_stream, &cloned_config);
-        });
-
-        let keepalive_stream = stream.try_clone()?;
-        let cloned_hwid = hwid.clone();
-        thread::spawn(move || loop {
-            let heart_beat = ClientProtocol::HeartBeat { hwid: &cloned_hwid };
-
-            write_to_stream(&keepalive_stream, &heart_beat);
-            thread::sleep(Duration::from_secs(2));
         });
 
         loop {
