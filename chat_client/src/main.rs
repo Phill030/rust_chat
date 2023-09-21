@@ -3,6 +3,7 @@ use crate::types::ClientProtocol;
 use machineid_rs::{HWIDComponent, IdBuilder};
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
+use std::time::Duration;
 use std::{process, thread};
 use types::{Config, ServerProtocol};
 
@@ -34,12 +35,21 @@ struct Client {
 impl Client {
     fn new(stream: &TcpStream, config: &Config, hwid: &String) -> io::Result<()> {
         // It is required to send the HWID to the server to authorize with it
-        Self::request_authentication(&stream);
+        Self::request_authentication(&stream, &config);
 
         let read_stream = stream.try_clone()?;
         let cloned_config = config.clone();
         thread::spawn(move || {
             Self::read_messages(read_stream, &cloned_config);
+        });
+
+        let keepalive_stream = stream.try_clone()?;
+        let cloned_hwid = hwid.clone();
+        thread::spawn(move || loop {
+            let heart_beat = ClientProtocol::HeartBeat { hwid: &cloned_hwid };
+
+            write_to_stream(&keepalive_stream, &heart_beat);
+            thread::sleep(Duration::from_secs(2));
         });
 
         loop {
@@ -52,8 +62,8 @@ impl Client {
             }
 
             let message = ClientProtocol::SendMessage {
-                hwid: hwid.clone(),
-                content: trimmed_input.to_owned(),
+                hwid: &hwid,
+                content: trimmed_input,
             };
 
             write_to_stream(&stream, &message);
@@ -109,9 +119,10 @@ impl Client {
         }
     }
 
-    fn request_authentication(stream: &TcpStream) {
+    fn request_authentication(stream: &TcpStream, config: &Config) {
         let message = ClientProtocol::RequestAuthentication {
-            hwid: construct_hwid(),
+            hwid: &construct_hwid(),
+            name: &config.name,
         };
 
         if !write_to_stream(stream, &message) {
