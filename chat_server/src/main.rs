@@ -13,7 +13,7 @@ pub mod error;
 pub mod event_handler;
 pub mod types;
 
-// const BUFFER_SIZE: usize = 2048;
+const BUFFER_SIZE: usize = 2048;
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
@@ -115,7 +115,7 @@ impl Server {
         mut stream: &TcpStream,
         clients: &Arc<Mutex<HashMap<String, (TcpStream, Client)>>>,
     ) {
-        let mut buffer = [0; 1024];
+        let mut buffer = [0; BUFFER_SIZE];
 
         loop {
             match stream.read(&mut buffer) {
@@ -152,7 +152,7 @@ impl Server {
                     }
 
                     // Clear the buffer
-                    buffer = [0; 1024];
+                    buffer = [0; BUFFER_SIZE];
                 }
                 Err(why) => {
                     log::error!("{}", why);
