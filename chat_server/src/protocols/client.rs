@@ -58,6 +58,7 @@ impl Serializer for ChatMessage {
         buffer.write_u8(ClientMessageType::ChatMessage as u8);
         buffer.extend(self.hwid.as_bytes());
         buffer.extend(self.content.as_bytes());
+
         buffer
     }
 }
