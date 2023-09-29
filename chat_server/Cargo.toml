@@ -5,6 +5,7 @@ edition = "2021"
 authors = ["Phill030"]
 
 [dependencies]
+crc32fast = "1.3.2"
 env_logger = "0.10.0"
 futures = "0.3.28"
 log = "0.4.20"
