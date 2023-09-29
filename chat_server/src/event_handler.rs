@@ -1,7 +1,4 @@
-use crate::{
-    types::{Client, ClientProtocol, ServerProtocol},
-    write_to_stream,
-};
+use crate::{protocols::server::ServerProtocol, types::Client, write_to_stream};
 use std::{
     collections::HashMap,
     io::Read,
