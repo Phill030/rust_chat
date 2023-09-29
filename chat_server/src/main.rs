@@ -1,4 +1,4 @@
-use crate::{event_handler::EventHandler, types::ServerProtocol};
+use crate::{event_handler::EventHandler, protocols::server::ServerProtocol};
 use config::config::ConfigManager;
 use std::{
     collections::HashMap,
@@ -6,11 +6,12 @@ use std::{
     net::{SocketAddr, TcpListener, TcpStream},
     sync::{Arc, Mutex},
 };
-use types::{Client, ClientProtocol};
+use types::Client;
 
 pub mod config;
 pub mod error;
 pub mod event_handler;
+pub mod protocols;
 pub mod types;
 
 const BUFFER_SIZE: usize = 2048;
