@@ -1,3 +1,6 @@
+use core::panic;
+use std::time::SystemTime;
+
 use tokio::io::AsyncWriteExt;
 
 use crate::types::Serializer;
@@ -40,6 +43,7 @@ impl Serializer for ChatMessage {
         if data.len() < 1 {
             return None;
         }
+
         let message_type = ClientMessageType::from(data[0]);
         if message_type != ClientMessageType::ChatMessage {
             return None;
@@ -54,12 +58,23 @@ impl Serializer for ChatMessage {
     }
 
     fn serialize(&self) -> Vec<u8> {
-        let mut buffer = Vec::new();
+        let mut buffer: Vec<u8> = Vec::new();
         buffer.write_u8(ClientMessageType::ChatMessage as u8);
-        buffer.extend(self.hwid.as_bytes());
-        buffer.extend(self.content.as_bytes());
 
-        buffer
+        // Content
+        let mut content_buffer = Vec::new();
+        content_buffer.extend(self.hwid.as_bytes());
+        content_buffer.extend(self.content.as_bytes());
+        // Append content_buffer length to main buffer
+        buffer.write_u64(content_buffer.len() as u64);
+        buffer.append(&mut content_buffer);
+
+        // Information
+        let checksum = crc32fast::hash(&content_buffer[..]);
+        buffer.write_u64(time_in_seconds());
+        buffer.write_u32(checksum);
+
+        return buffer;
     }
 }
 
@@ -107,5 +122,12 @@ impl Serializer for AuthenticationRequest {
 
     fn serialize(&self) -> Vec<u8> {
         todo!()
+    }
+}
+
+fn time_in_seconds() -> u64 {
+    match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+        Ok(n) => n.as_secs(),
+        Err(_) => panic!("SystemTime before UNIX_EPOCH!"),
     }
 }
