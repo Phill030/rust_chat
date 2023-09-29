@@ -1,27 +1,5 @@
 use std::net::SocketAddr;
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub enum ServerProtocol<'a> {
-    BroadcastMessage { sender: &'a str, content: &'a str },
-    AuthenticateToken { token: &'a str },
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub enum ClientProtocol<'a> {
-    SendMessage {
-        hwid: &'a str,
-        content: &'a str,
-    },
-    ChangeUsername {
-        hwid: &'a str,
-        new_username: &'a str,
-    },
-    RequestAuthentication {
-        hwid: &'a str,
-        name: &'a str,
-    },
-}
-
 #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Client {
     /// A custom name of the client
@@ -45,4 +23,11 @@ impl Default for Config {
             buffer_size: 2048,
         }
     }
+}
+
+pub trait Serializer {
+    fn serialize(&self) -> Vec<u8>;
+    fn deserialize(data: &[u8]) -> Option<Self>
+    where
+        Self: Sized;
 }
