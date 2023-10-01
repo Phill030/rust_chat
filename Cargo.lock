@@ -180,6 +180,7 @@ dependencies = [
  "crc32fast",
  "thiserror",
  "tokio",
+ "toml",
 ]
 
 [[package]]
