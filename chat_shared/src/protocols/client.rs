@@ -79,7 +79,7 @@ impl Serializer for ChatMessage {
         buffer.write_u32(checksum).await?;
 
         // Append content_buffer length to main buffer after everything is written
-        buffer.write_u64(content_buffer.len() as u64).await?;
+        buffer.write_u32(content_buffer.len() as u32).await?;
         buffer.append(&mut content_buffer);
 
         return Ok(buffer);
@@ -116,7 +116,7 @@ impl Serializer for ChangeUsername {
         buffer.write_u32(checksum).await?;
 
         // Append content_buffer length to main buffer after everything is written
-        buffer.write_u64(content_buffer.len() as u64).await?;
+        buffer.write_u32(content_buffer.len() as u32).await?;
         buffer.append(&mut content_buffer);
 
         return Ok(buffer);
@@ -141,6 +141,7 @@ impl Serializer for RequestAuthentication {
         content_buffer
             .write_u32(self.hwid.as_bytes().len() as u32)
             .await?;
+        println!("{}, {}", self.hwid, self.hwid.as_bytes().len() as u32);
         content_buffer.extend(self.hwid.as_bytes());
         //Content
         content_buffer
@@ -153,7 +154,8 @@ impl Serializer for RequestAuthentication {
         buffer.write_u32(checksum).await?;
 
         // Append content_buffer length to main buffer after everything is written
-        buffer.write_u64(content_buffer.len() as u64).await?;
+        buffer.write_u32(content_buffer.len() as u32).await?;
+        println!("CLIENT CONTENT_BUFFER LEN {}", content_buffer.len() as u32);
         buffer.append(&mut content_buffer);
 
         return Ok(buffer);
@@ -187,7 +189,7 @@ impl Deserializer for BroadcastMessage {
         let checksum = data.read_u32().await?;
         // TODO: Compare checksums
 
-        let msg_length = data.read_u64().await?;
+        let msg_length = data.read_u32().await?;
         let mut buffer = vec![0u8; msg_length as usize];
         data.read_buf(&mut buffer).await?;
 
@@ -232,7 +234,7 @@ impl Deserializer for AuthenticateToken {
         let checksum = data.read_u32().await?;
         // TODO: Compare checksums
 
-        let msg_length = data.read_u64().await?;
+        let msg_length = data.read_u32().await?;
         let mut buffer = vec![0u8; msg_length as usize];
         data.read_buf(&mut buffer).await?;
 

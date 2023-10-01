@@ -62,7 +62,7 @@ impl Deserializer for ChatMessage {
         let checksum = data.read_u32().await?;
         // TODO: Compare checksums
 
-        let msg_length = data.read_u64().await?;
+        let msg_length = data.read_u32().await?;
         let mut buffer = vec![0u8; msg_length as usize];
         data.read_buf(&mut buffer).await?;
 
@@ -107,7 +107,7 @@ impl Deserializer for ChangeUsername {
         let checksum = data.read_u32().await?;
         // TODO: Compare checksum
 
-        let msg_length = data.read_u64().await?;
+        let msg_length = data.read_u32().await?;
         let mut buffer = vec![0u8; msg_length as usize];
         data.read_buf(&mut buffer).await?;
 
@@ -155,16 +155,19 @@ impl Deserializer for RequestAuthentication {
         let checksum = data.read_u32().await?;
         // TODO: Compare checksum
 
-        let msg_length = data.read_u64().await?;
+        let msg_length = data.read_u32().await?;
         let mut buffer = vec![0u8; msg_length as usize];
         data.read_buf(&mut buffer).await?;
+        println!("SERVER MSG CONTENT {:?}", buffer);
 
         // Data length (size always u32)
         let hwid_length = usize::try_from(buffer.as_slice().read_u32().await?)?;
         let hwid = String::from_utf8(buffer[0..hwid_length].to_vec()).ok();
+        println!("SERVER {} {}", hwid_length, hwid.clone().unwrap());
 
         let name_length = usize::try_from(buffer.as_slice().read_u32().await?)?;
         let name = String::from_utf8(buffer[hwid_length..name_length].to_vec()).ok();
+        println!("SERVER {} {}", name_length, name.clone().unwrap());
 
         if hwid.is_none() || name.is_none() {
             return Ok(None);
@@ -211,7 +214,7 @@ impl Serializer for BroadcastMessage {
         buffer.write_u32(checksum).await?;
 
         // Append content_buffer length to main buffer after everything is written
-        buffer.write_u64(content_buffer.len() as u64).await?;
+        buffer.write_u32(content_buffer.len() as u32).await?;
         buffer.append(&mut content_buffer);
 
         return Ok(buffer);
@@ -243,7 +246,7 @@ impl Serializer for AuthenticateToken {
         buffer.write_u32(checksum).await?;
 
         // Append content_buffer length to main buffer after everything is written
-        buffer.write_u64(content_buffer.len() as u64).await?;
+        buffer.write_u32(content_buffer.len() as u32).await?;
         buffer.append(&mut content_buffer);
 
         return Ok(buffer);
