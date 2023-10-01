@@ -1,4 +1,5 @@
-use crate::{error::ConfigError, types::Config};
+use crate::types::Config;
+use chat_shared::error::ConfigError;
 use tokio::{
     fs::File,
     io::{AsyncReadExt, AsyncWriteExt},

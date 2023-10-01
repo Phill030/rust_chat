@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Debug};
+use std::{error::Error, fmt::Debug, num::TryFromIntError};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ConfigError {
@@ -7,6 +7,24 @@ pub enum ConfigError {
 
     #[error("Unable to convert config to string!")]
     TOML(#[from] toml::ser::Error),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum SerializerError {
+    #[error("Unable to serialize from stream")]
+    IO(#[from] std::io::Error),
+    #[error("Unable to convert between types")]
+    Type(#[from] TryFromIntError),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum DeserializerError {
+    #[error("Unable to deserialize from stream")]
+    IO(#[from] std::io::Error),
+    #[error("Unable to convert between types")]
+    Type(#[from] TryFromIntError),
+    #[error("Received invalid MessageType")]
+    InvalidMessageType,
 }
 
 #[derive(thiserror::Error)]
