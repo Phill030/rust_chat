@@ -1,13 +1,15 @@
 use crate::config::config::ConfigManager;
-use crate::types::ClientProtocol;
+use chat_shared::error::WriteToStreamError;
+use chat_shared::protocols::client::{ChatMessage, RequestAuthentication};
+use chat_shared::protocols::server::{AuthenticateToken, BroadcastMessage, ServerMessageType};
+use chat_shared::types::{Deserializer, Serializer};
 use machineid_rs::{HWIDComponent, IdBuilder};
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
 use std::{process, thread};
-use types::{Config, ServerProtocol};
+use types::Config;
 
 mod config;
-mod error;
 mod types;
 
 static KEY: &str = "1234567890";
@@ -20,7 +22,7 @@ async fn main() -> io::Result<()> {
     let config = ConfigManager::initialize_or_create().await.unwrap();
     if let Ok(stream) = TcpStream::connect(config.endpoint) {
         log::info!("Connected to server");
-        Client::new(&stream, &config, &hwid)?;
+        Client::new(&stream, &config, &hwid).await?;
     }
 
     Ok(())
@@ -32,14 +34,14 @@ struct Client {
 }
 
 impl Client {
-    fn new(stream: &TcpStream, config: &Config, hwid: &String) -> io::Result<()> {
+    async fn new(stream: &TcpStream, config: &Config, hwid: &String) -> io::Result<()> {
         // It is required to send the HWID to the server to authorize with it
-        Self::request_authentication(&stream, &config);
+        Self::request_authentication(&stream, &config).await;
 
         let read_stream = stream.try_clone()?;
         let cloned_config = config.clone();
-        thread::spawn(move || {
-            Self::read_messages(read_stream, &cloned_config);
+        tokio::spawn(async move {
+            Self::read_messages(read_stream, &cloned_config).await;
         });
 
         loop {
@@ -51,16 +53,16 @@ impl Client {
                 continue;
             }
 
-            let message = ClientProtocol::SendMessage {
-                hwid: &hwid,
-                content: trimmed_input,
+            let message = ChatMessage {
+                hwid: hwid.to_string(),
+                content: trimmed_input.to_string(),
             };
 
-            write_to_stream(&stream, &message);
+            write_to_stream(&stream, &message).await.unwrap();
         }
     }
 
-    fn read_messages(mut stream: TcpStream, config: &Config) {
+    async fn read_messages(mut stream: TcpStream, config: &Config) {
         let mut buffer = vec![0; config.buffer_size];
 
         loop {
@@ -68,35 +70,53 @@ impl Client {
                 Ok(bytes_read) => {
                     if bytes_read == 0 {
                         log::warn!("Server disconnected");
-                        break;
+                        process::exit(0);
                     }
 
-                    let message = String::from_utf8_lossy(&buffer[0..bytes_read]).to_string();
+                    match ServerMessageType::from(buffer[0]) {
+                        ServerMessageType::AuthenticateToken => {
+                            let message = AuthenticateToken::deserialize(&buffer)
+                                .await
+                                .unwrap()
+                                .unwrap();
 
-                    let deserialized_message: Result<ServerProtocol, _> =
-                        serde_json::from_str(&message);
+                            log::info!("Session-Token: {}", message.token);
+                        }
+                        ServerMessageType::BroadcastMessage => {
+                            // TODO: Something OnError
+                            let message = BroadcastMessage::deserialize(&buffer)
+                                .await
+                                .unwrap()
+                                .unwrap();
 
-                    match deserialized_message {
-                        Ok(server_message) => match server_message {
-                            ServerProtocol::BroadcastMessage { sender, content } => {
-                                log::info!("Received '{content}' from {sender}");
-                            }
-                            ServerProtocol::AuthenticateToken { token } => {
-                                log::info!("Session-Token: {}", token);
-                            }
-
-                            // Every other message
-                            _ => {
-                                log::warn!(
-                                    "Received unknown message from server: {:#?}",
-                                    server_message
-                                );
-                            }
-                        },
-                        Err(_) => {
-                            log::warn!("Error parsing client message");
+                            log::info!("Received {} from {}", message.content, message.hwid);
+                        }
+                        ServerMessageType::InvalidEvent => {
+                            log::warn!("Received unknown message from server");
                         }
                     }
+
+                    // match deserialized_message {
+                    //     Ok(server_message) => match server_message {
+                    //         ServerProtocol::BroadcastMessage { sender, content } => {
+                    //             log::info!("Received '{content}' from {sender}");
+                    //         }
+                    //         ServerProtocol::AuthenticateToken { token } => {
+                    //             log::info!("Session-Token: {}", token);
+                    //         }
+
+                    //         // Every other message
+                    //         _ => {
+                    //             log::warn!(
+                    //                 "Received unknown message from server: {:#?}",
+                    //                 server_message
+                    //             );
+                    //         }
+                    //     },
+                    //     Err(_) => {
+                    //         log::warn!("Error parsing client message");
+                    //     }
+                    // }
 
                     // Clear the buffer
                     buffer = vec![0; config.buffer_size];
@@ -109,13 +129,17 @@ impl Client {
         }
     }
 
-    fn request_authentication(stream: &TcpStream, config: &Config) {
-        let message = ClientProtocol::RequestAuthentication {
-            hwid: &construct_hwid(),
-            name: &config.name,
+    async fn request_authentication(stream: &TcpStream, config: &Config) {
+        let message = RequestAuthentication {
+            hwid: construct_hwid(),
+            name: config.name.to_string(),
         };
 
-        if !write_to_stream(stream, &message) {
+        // TODO: Maybe fix this? 😂
+        if !write_to_stream(stream, &message)
+            .await
+            .is_ok_and(|x| x == true)
+        {
             log::error!("Error authenticating");
             process::exit(0);
         }
@@ -137,17 +161,20 @@ fn construct_hwid() -> String {
     }
 }
 
-fn write_to_stream<T>(mut stream: &TcpStream, content: &T) -> bool
+async fn write_to_stream<T>(mut stream: &TcpStream, content: &T) -> Result<bool, WriteToStreamError>
 where
-    T: serde::Deserialize<'static> + serde::Serialize, // struct T must have trait Serialize & Deserialize
+    T: Serializer,
 {
-    let serialized_message = serde_json::to_string(&content).expect("Serialization failed");
+    let Ok(serialized) = &content.serialize().await else {
+        log::error!("Unable to serialize message");
+        return Ok(false);
+    };
 
-    if stream.write_all(serialized_message.as_bytes()).is_err() {
-        log::warn!("[❌] There was an error broadcasting the message");
-        false
-    } else {
+    if stream.write_all(&serialized[..]).is_ok() {
         log::info!("[✔] Message broadcasted!");
-        true
+        Ok(true)
+    } else {
+        log::warn!("[❌] There was an error broadcasting the message");
+        Ok(false)
     }
 }
