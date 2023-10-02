@@ -25,6 +25,8 @@ pub enum DeserializerError {
     Type(#[from] TryFromIntError),
     #[error("Received invalid MessageType")]
     InvalidMessageType,
+    #[error("Received invalid Buffer length")]
+    InvalidBufferLength,
     #[error("Unable to convert to UTF-8")]
     FromUtf8Error(#[from] FromUtf8Error),
 }
