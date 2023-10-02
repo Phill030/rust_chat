@@ -1,12 +1,13 @@
+use std::io::Cursor;
+
+use super::server::{AuthenticateToken, BroadcastMessage, ServerMessageType};
 use crate::{
     error::{DeserializerError, SerializerError},
     types::{Deserializer, Serializer},
-    utils::time_in_seconds,
+    utils::{prepare_inner_cursor, read_string_from_buffer, time_in_seconds},
 };
 use async_trait::async_trait;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-use super::server::{AuthenticateToken, BroadcastMessage, ServerMessageType};
 
 #[derive(PartialEq, Debug)]
 pub enum ClientMessageType {
@@ -65,12 +66,12 @@ impl Serializer for ChatMessage {
         let mut content_buffer = Vec::new();
         // HWID
         content_buffer
-            .write_u32(self.hwid.as_bytes().len() as u32)
+            .write_u32(u32::try_from(self.hwid.as_bytes().len())?)
             .await?;
         content_buffer.extend(self.hwid.as_bytes());
         //Content
         content_buffer
-            .write_u32(self.content.as_bytes().len() as u32)
+            .write_u32(u32::try_from(self.content.as_bytes().len())?)
             .await?;
         content_buffer.extend(self.content.as_bytes());
 
@@ -79,7 +80,9 @@ impl Serializer for ChatMessage {
         buffer.write_u32(checksum).await?;
 
         // Append content_buffer length to main buffer after everything is written
-        buffer.write_u32(content_buffer.len() as u32).await?;
+        buffer
+            .write_u32(u32::try_from(content_buffer.len())?)
+            .await?;
         buffer.append(&mut content_buffer);
 
         return Ok(buffer);
@@ -102,12 +105,12 @@ impl Serializer for ChangeUsername {
         let mut content_buffer = Vec::new();
         // HWID
         content_buffer
-            .write_u32(self.hwid.as_bytes().len() as u32)
+            .write_u32(u32::try_from(self.hwid.as_bytes().len())?)
             .await?;
         content_buffer.extend(self.hwid.as_bytes());
         //Content
         content_buffer
-            .write_u32(self.new_username.as_bytes().len() as u32)
+            .write_u32(u32::try_from(self.new_username.as_bytes().len())?)
             .await?;
         content_buffer.extend(self.new_username.as_bytes());
 
@@ -116,7 +119,9 @@ impl Serializer for ChangeUsername {
         buffer.write_u32(checksum).await?;
 
         // Append content_buffer length to main buffer after everything is written
-        buffer.write_u32(content_buffer.len() as u32).await?;
+        buffer
+            .write_u32(u32::try_from(content_buffer.len())?)
+            .await?;
         buffer.append(&mut content_buffer);
 
         return Ok(buffer);
@@ -139,13 +144,12 @@ impl Serializer for RequestAuthentication {
         let mut content_buffer = Vec::new();
         // HWID
         content_buffer
-            .write_u32(self.hwid.as_bytes().len() as u32)
+            .write_u32(u32::try_from(self.hwid.as_bytes().len())?)
             .await?;
-        println!("{}, {}", self.hwid, self.hwid.as_bytes().len() as u32);
         content_buffer.extend(self.hwid.as_bytes());
         //Content
         content_buffer
-            .write_u32(self.name.as_bytes().len() as u32)
+            .write_u32(u32::try_from(self.name.as_bytes().len())?)
             .await?;
         content_buffer.extend(self.name.as_bytes());
 
@@ -154,8 +158,9 @@ impl Serializer for RequestAuthentication {
         buffer.write_u32(checksum).await?;
 
         // Append content_buffer length to main buffer after everything is written
-        buffer.write_u32(content_buffer.len() as u32).await?;
-        println!("CLIENT CONTENT_BUFFER LEN {}", content_buffer.len() as u32);
+        buffer
+            .write_u32(u32::try_from(content_buffer.len())?)
+            .await?;
         buffer.append(&mut content_buffer);
 
         return Ok(buffer);
@@ -168,37 +173,30 @@ impl Serializer for RequestAuthentication {
 
 #[async_trait]
 impl Deserializer for BroadcastMessage {
-    async fn deserialize<'a>(mut data: &'a [u8]) -> Result<Option<Self>, DeserializerError>
+    async fn deserialize<'a>(data: &'a [u8]) -> Result<Option<Self>, DeserializerError>
     where
         Self: Sized,
     {
         if data.len() < 1 {
-            return Ok(None);
+            return Err(DeserializerError::InvalidBufferLength);
         }
+        let mut data = Cursor::new(data);
 
         let msg_type = data.read_u8().await?;
         let message_type = ServerMessageType::from(msg_type);
         if message_type != ServerMessageType::BroadcastMessage {
-            return Ok(None);
+            return Err(DeserializerError::InvalidMessageType);
         }
 
         // Invalid message (Slow response?)
         let timestamp = data.read_u64().await?;
         // TODO: Check if time is in range of 2 minutes
-
         let checksum = data.read_u32().await?;
         // TODO: Compare checksums
 
-        let msg_length = data.read_u32().await?;
-        let mut buffer = vec![0u8; msg_length as usize];
-        data.read_buf(&mut buffer).await?;
-
-        // Data length (size always u32)
-        let hwid_length = usize::try_from(buffer.as_slice().read_u32().await?)?;
-        let hwid = String::from_utf8(buffer[0..hwid_length].to_vec()).ok();
-
-        let content_length = usize::try_from(buffer.as_slice().read_u32().await?)?;
-        let content = String::from_utf8(buffer[hwid_length..content_length].to_vec()).ok();
+        let mut inner_cursor = prepare_inner_cursor(&mut data).await?;
+        let hwid = read_string_from_buffer(&mut inner_cursor).await?;
+        let content = read_string_from_buffer(&mut inner_cursor).await?;
 
         if hwid.is_none() || content.is_none() {
             return Ok(None);
@@ -213,34 +211,29 @@ impl Deserializer for BroadcastMessage {
 
 #[async_trait]
 impl Deserializer for AuthenticateToken {
-    async fn deserialize<'a>(mut data: &'a [u8]) -> Result<Option<Self>, DeserializerError>
+    async fn deserialize<'a>(data: &'a [u8]) -> Result<Option<Self>, DeserializerError>
     where
         Self: Sized,
     {
         if data.len() < 1 {
-            return Ok(None);
+            return Err(DeserializerError::InvalidBufferLength);
         }
+        let mut data = Cursor::new(data);
 
         let msg_type = data.read_u8().await?;
         let message_type = ServerMessageType::from(msg_type);
         if message_type != ServerMessageType::AuthenticateToken {
-            return Ok(None);
+            return Err(DeserializerError::InvalidMessageType);
         }
 
         // Invalid message (Slow response?)
         let timestamp = data.read_u64().await?;
         // TODO: Check if time is in range of 2 minutes
-
         let checksum = data.read_u32().await?;
         // TODO: Compare checksums
 
-        let msg_length = data.read_u32().await?;
-        let mut buffer = vec![0u8; msg_length as usize];
-        data.read_buf(&mut buffer).await?;
-
-        // Data length (size always u32)
-        let token_length = usize::try_from(buffer.as_slice().read_u32().await?)?;
-        let token = String::from_utf8(buffer[0..token_length].to_vec()).ok();
+        let mut inner_cursor = prepare_inner_cursor(&mut data).await?;
+        let token = read_string_from_buffer(&mut inner_cursor).await?;
 
         if token.is_none() {
             return Ok(None);
