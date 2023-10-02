@@ -1,4 +1,4 @@
-use std::time::SystemTime;
+use std::{io::Cursor, time::SystemTime};
 use tokio::io::AsyncReadExt;
 
 use crate::error::DeserializerError;
@@ -21,4 +21,12 @@ pub async fn read_string_from_buffer(
         Ok(b) => Ok(Some(b)),
         Err(_) => Ok(None),
     }
+}
+
+pub async fn prepare_inner_cursor(cursor: &mut Cursor<&[u8]>) -> std::io::Result<Cursor<Vec<u8>>> {
+    let msg_length = cursor.read_u32().await?;
+    let mut buffer = vec![0u8; msg_length as usize];
+    cursor.read(&mut buffer).await?;
+
+    Ok(Cursor::new(buffer))
 }
