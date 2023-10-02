@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Debug, num::TryFromIntError};
+use std::{error::Error, fmt::Debug, num::TryFromIntError, string::FromUtf8Error};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ConfigError {
@@ -25,6 +25,8 @@ pub enum DeserializerError {
     Type(#[from] TryFromIntError),
     #[error("Received invalid MessageType")]
     InvalidMessageType,
+    #[error("Unable to convert to UTF-8")]
+    FromUtf8Error(#[from] FromUtf8Error),
 }
 
 #[derive(thiserror::Error)]
