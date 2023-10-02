@@ -1,45 +1,44 @@
-use crate::{protocols::server::ServerProtocol, types::Client, write_to_stream};
-use std::{
-    collections::HashMap,
-    io::Read,
-    net::TcpStream,
-    process,
-    sync::{Arc, Mutex},
+use crate::{types::Client, write_to_stream};
+use chat_shared::{
+    error::WriteToStreamError,
+    protocols::{
+        client::{ChangeUsername, ChatMessage, ClientMessageType, RequestAuthentication},
+        server::BroadcastMessage,
+    },
+    types::Deserializer,
 };
+use std::{collections::HashMap, io::Read, net::TcpStream, process, sync::Arc};
+use tokio::sync::Mutex;
 
 pub struct EventHandler;
 
 impl EventHandler {
-    pub fn handle_send_message(
-        hwid: &str,
-        content: &str,
+    pub async fn handle_send_message(
+        chat_message: ChatMessage,
         clients: &Arc<Mutex<HashMap<String, (TcpStream, Client)>>>,
-    ) {
-        match clients.lock() {
-            Ok(lock) => {
-                for (client_hwid, (client_stream, c)) in &*lock {
-                    if client_hwid.eq(&hwid) {
-                        log::info!("{} --> {}", c.name, content.clone());
+    ) -> Result<(), WriteToStreamError> {
+        let lock = clients.lock().await;
 
-                        continue;
-                    }
-
-                    // The message which get's sent to everyone else
-                    let message = ServerProtocol::BroadcastMessage {
-                        sender: hwid,
-                        content,
-                    };
-
-                    write_to_stream(client_stream, &message);
-                }
+        for (client_hwid, (client_stream, c)) in &*lock {
+            if client_hwid.eq(&chat_message.hwid) {
+                log::info!("{} --> {}", c.name, chat_message.content.clone());
+                continue;
             }
-            Err(_) => {
-                log::error!("There was an error locking the value");
-            }
+
+            // The message which get's sent to everyone else
+            let message = BroadcastMessage {
+                hwid: chat_message.hwid.to_string(),
+                content: chat_message.content.to_string(),
+            };
+            write_to_stream(client_stream, &message).await?;
+
+            return Ok(());
         }
+
+        return Ok(());
     }
 
-    pub fn handle_auth(mut stream: &TcpStream) -> Option<(String, String)> {
+    pub async fn handle_auth(mut stream: &TcpStream) -> Option<(String, String)> {
         // Doesn't need to be bigger since it's just the HWID Authorization event
         let mut buffer = [0; 1024];
 
@@ -50,22 +49,26 @@ impl EventHandler {
                     process::exit(0);
                 }
 
-                let incoming_message = String::from_utf8_lossy(&buffer[0..bytes_read]).to_string();
+                match ClientMessageType::from(buffer[0]) {
+                    ClientMessageType::RequestAuthentication => {
+                        let message = RequestAuthentication::deserialize(&buffer).await;
 
-                let deserialized_message: Result<ClientProtocol, _> =
-                    serde_json::from_str(&incoming_message);
+                        let msg = match message {
+                            Ok(m) => m,
+                            Err(why) => {
+                                panic!("{why}");
+                            }
+                        };
 
-                match deserialized_message {
-                    Ok(client_message) => {
-                        if let ClientProtocol::RequestAuthentication { hwid, name } = client_message
-                        {
-                            Some((hwid.to_string(), name.to_string()))
-                        } else {
-                            log::error!("Received invalid event before authentication!");
-                            None
+                        match msg {
+                            Some(m) => return Some((m.hwid.to_string(), m.name.to_string())),
+                            None => None,
                         }
                     }
-                    Err(_) => None,
+                    _ => {
+                        log::error!("Received invalid event before authentication");
+                        None
+                    }
                 }
             }
 
@@ -76,11 +79,15 @@ impl EventHandler {
         }
     }
 
-    pub fn handle_change_username(hwid: &str, new_username: &str) {
-        log::info!("{hwid} changed their username to {new_username}");
+    pub fn handle_change_username(change_username: ChangeUsername) {
+        log::info!(
+            "{} changed their username to {}",
+            change_username.hwid,
+            change_username.new_username
+        );
     }
 
-    pub fn handle_unknown_message(client_message: &ClientProtocol) {
-        log::warn!("Received unknown message {:#?}", client_message);
+    pub fn handle_unknown_message() {
+        log::warn!("Received unknown message");
     }
 }
