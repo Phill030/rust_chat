@@ -1,18 +1,28 @@
-use crate::{event_handler::EventHandler, protocols::server::ServerProtocol};
+use crate::{
+    event_handler::EventHandler,
+    util::{check_username, write_to_stream},
+};
+use chat_shared::{
+    protocols::{
+        client::{ChangeUsername, ChatMessage, ClientMessageType},
+        server::AuthenticateToken,
+    },
+    types::Deserializer,
+};
 use config::config::ConfigManager;
 use std::{
     collections::HashMap,
-    io::{Read, Write},
+    io::Read,
     net::{SocketAddr, TcpListener, TcpStream},
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
+use tokio::sync::Mutex;
 use types::Client;
 
 pub mod config;
-pub mod error;
 pub mod event_handler;
-pub mod protocols;
 pub mod types;
+pub mod util;
 
 const BUFFER_SIZE: usize = 2048;
 
@@ -57,8 +67,11 @@ impl Server {
                             // We need the HWID here so we can identify the client
                             while current_client.is_none() {
                                 log::info!("Waiting for HWID...");
-                                if let Some(c) = EventHandler::handle_auth(&stream) {
+                                if let Some(c) = EventHandler::handle_auth(&stream).await {
                                     current_client = Some(c);
+                                } else {
+                                    // Remove connection to client?
+                                    // return;
                                 }
                             }
 
@@ -74,24 +87,24 @@ impl Server {
                             };
                             log::info!("Found Hwid [{}]", client_some.0);
 
-                            let message = ServerProtocol::AuthenticateToken {
-                                token: &session_token,
+                            let message = AuthenticateToken {
+                                token: session_token,
                             };
-                            write_to_stream(&stream, &message);
+                            write_to_stream(&stream, &message).await.unwrap();
 
                             connected_clients
                                 .lock()
-                                .expect("Can't lock clients")
+                                .await
                                 .insert(client_some.0, (stream.try_clone().unwrap(), client));
 
-                            log::info!("{:#?}", connected_clients.lock().unwrap());
+                            log::info!("{:#?}", connected_clients.lock().await);
 
-                            Self::handle_connection(&stream, &connected_clients);
+                            Self::handle_connection(&stream, &connected_clients).await;
+                            // TODO: Implement async (How to send Mutex??)
                         }
 
                         // This will trigger after the client is disconnected & removes them from the HashMap
-                        let mut connected_locked =
-                            connected_clients.lock().expect("Unable to lock variable");
+                        let mut connected_locked = connected_clients.lock().await;
                         connected_locked.remove(&current_client.clone().unwrap().0);
 
                         log::info!("Client disconnected");
@@ -112,7 +125,7 @@ impl Server {
         })
     }
 
-    fn handle_connection(
+    async fn handle_connection(
         mut stream: &TcpStream,
         clients: &Arc<Mutex<HashMap<String, (TcpStream, Client)>>>,
     ) {
@@ -126,30 +139,23 @@ impl Server {
                         break;
                     }
 
-                    let incoming_message =
-                        String::from_utf8_lossy(&buffer[0..bytes_read]).to_string();
-
-                    log::info!("{incoming_message}");
-
-                    let deserialized_message: Result<ClientProtocol, _> =
-                        serde_json::from_str(&incoming_message);
-
-                    match deserialized_message {
-                        Ok(client_message) => match client_message {
-                            ClientProtocol::ChangeUsername { hwid, new_username } => {
-                                EventHandler::handle_change_username(&hwid, &new_username);
+                    match ClientMessageType::from(buffer[0]) {
+                        ClientMessageType::ChangeUsername => {
+                            let msg = ChangeUsername::deserialize(&buffer).await.unwrap();
+                            if msg.is_some() {
+                                EventHandler::handle_change_username(msg.unwrap());
                             }
-
-                            ClientProtocol::SendMessage { hwid, content } => {
-                                EventHandler::handle_send_message(&hwid, &content, clients);
-                            }
-
-                            // Every other message
-                            _ => EventHandler::handle_unknown_message(&client_message),
-                        },
-                        Err(why) => {
-                            log::error!("Error parsing client message, {}", why);
                         }
+                        ClientMessageType::ChatMessage => {
+                            let msg = ChatMessage::deserialize(&buffer).await.unwrap();
+                            if msg.is_some() {
+                                EventHandler::handle_send_message(msg.unwrap(), clients)
+                                    .await
+                                    .unwrap();
+                            }
+                        }
+
+                        _ => EventHandler::handle_unknown_message(),
                     }
 
                     // Clear the buffer
@@ -162,34 +168,4 @@ impl Server {
             }
         }
     }
-}
-
-fn write_to_stream<T>(mut stream: &TcpStream, content: &T)
-where
-    T: serde::Deserialize<'static> + serde::Serialize, // struct T must have trait Serialize & Deserialize
-{
-    let serialized_message = serde_json::to_string(&content).expect("Serialization failed");
-
-    if stream.write_all(serialized_message.as_bytes()).is_err() {
-        log::warn!("[❌] There was an error broadcasting the message");
-    } else {
-        log::info!("[✔] Message broadcasted!");
-    }
-}
-
-fn check_username(name: &str) -> String {
-    if name.len() < 1 || name.len() > 32 || !is_alphanumeric_with_symbols(&name) {
-        return format!("User{}", rand::prelude::random::<i16>());
-    }
-
-    return name.to_string();
-}
-
-fn is_alphanumeric_with_symbols(input: &str) -> bool {
-    for c in input.chars() {
-        if !c.is_alphanumeric() && !c.is_ascii_punctuation() {
-            return false;
-        }
-    }
-    true
 }
