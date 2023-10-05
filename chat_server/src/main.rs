@@ -100,7 +100,6 @@ impl Server {
                             log::info!("{:#?}", connected_clients.lock().await);
 
                             Self::handle_connection(&stream, &connected_clients).await;
-                            // TODO: Implement async (How to send Mutex??)
                         }
 
                         // This will trigger after the client is disconnected & removes them from the HashMap
