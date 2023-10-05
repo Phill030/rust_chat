@@ -176,7 +176,7 @@ impl Deserializer for BroadcastMessage {
     where
         Self: Sized,
     {
-        if data.len() < 1 {
+        if data.is_empty() {
             return Err(DeserializerError::InvalidBufferLength);
         }
         let mut data = Cursor::new(data);
@@ -214,7 +214,7 @@ impl Deserializer for AuthenticateToken {
     where
         Self: Sized,
     {
-        if data.len() < 1 {
+        if data.is_empty() {
             return Err(DeserializerError::InvalidBufferLength);
         }
         let mut data = Cursor::new(data);
