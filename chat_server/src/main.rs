@@ -1,6 +1,6 @@
 use crate::{
     event_handler::EventHandler,
-    util::{check_username, write_to_stream},
+    utils::{check_username, write_to_stream},
 };
 use chat_shared::{
     protocols::{
@@ -22,7 +22,7 @@ use types::Client;
 pub mod config;
 pub mod event_handler;
 pub mod types;
-pub mod util;
+pub mod utils;
 
 const BUFFER_SIZE: usize = 2048;
 
@@ -71,7 +71,7 @@ impl Server {
                                     current_client = Some(c);
                                 } else {
                                     // Remove connection to client?
-                                    // return;
+                                    return;
                                 }
                             }
 
@@ -100,7 +100,6 @@ impl Server {
                             log::info!("{:#?}", connected_clients.lock().await);
 
                             Self::handle_connection(&stream, &connected_clients).await;
-                            // TODO: Implement async (How to send Mutex??)
                         }
 
                         // This will trigger after the client is disconnected & removes them from the HashMap

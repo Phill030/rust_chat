@@ -2,7 +2,7 @@ use super::client::{ChangeUsername, ChatMessage, ClientMessageType, RequestAuthe
 use crate::{
     error::{DeserializerError, SerializerError},
     types::{Deserializer, Serializer},
-    utils::{prepare_inner_cursor, read_string_from_buffer, time_in_seconds},
+    utils::{cmp_timestamp, prepare_inner_cursor, read_string_from_buffer, time_in_seconds},
 };
 use async_trait::async_trait;
 use std::io::Cursor;
@@ -46,7 +46,7 @@ impl Deserializer for ChatMessage {
     where
         Self: Sized,
     {
-        if data.len() < 1 {
+        if data.is_empty() {
             return Err(DeserializerError::InvalidBufferLength);
         }
         let mut data = Cursor::new(data);
@@ -59,7 +59,11 @@ impl Deserializer for ChatMessage {
 
         // Invalid message (Slow response?)
         let timestamp = data.read_u64().await?;
-        // TODO: Check if time is in range of 2 minutes
+        if !cmp_timestamp(timestamp) {
+            println!("Message invalid or wrong TIME_SINCE_UNIX_EPOCH was sent [{timestamp}]");
+            return Ok(None);
+        }
+
         let checksum = data.read_u32().await?;
         // TODO: Compare checksums
 
@@ -84,7 +88,7 @@ impl Deserializer for ChangeUsername {
     where
         Self: Sized,
     {
-        if data.len() < 1 {
+        if data.is_empty() {
             return Err(DeserializerError::InvalidBufferLength);
         }
         let mut data = Cursor::new(data);
@@ -122,7 +126,7 @@ impl Deserializer for RequestAuthentication {
     where
         Self: Sized,
     {
-        if data.len() < 1 {
+        if data.is_empty() {
             return Err(DeserializerError::InvalidBufferLength);
         }
         let mut data = Cursor::new(data);

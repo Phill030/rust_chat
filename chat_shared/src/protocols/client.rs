@@ -1,5 +1,3 @@
-use std::io::Cursor;
-
 use super::server::{AuthenticateToken, BroadcastMessage, ServerMessageType};
 use crate::{
     error::{DeserializerError, SerializerError},
@@ -7,6 +5,7 @@ use crate::{
     utils::{prepare_inner_cursor, read_string_from_buffer, time_in_seconds},
 };
 use async_trait::async_trait;
+use std::io::Cursor;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(PartialEq, Debug)]
@@ -177,7 +176,7 @@ impl Deserializer for BroadcastMessage {
     where
         Self: Sized,
     {
-        if data.len() < 1 {
+        if data.is_empty() {
             return Err(DeserializerError::InvalidBufferLength);
         }
         let mut data = Cursor::new(data);
@@ -215,7 +214,7 @@ impl Deserializer for AuthenticateToken {
     where
         Self: Sized,
     {
-        if data.len() < 1 {
+        if data.is_empty() {
             return Err(DeserializerError::InvalidBufferLength);
         }
         let mut data = Cursor::new(data);
@@ -244,3 +243,5 @@ impl Deserializer for AuthenticateToken {
         }));
     }
 }
+
+// TODO: Make custom implementation for adding header, content, etc.

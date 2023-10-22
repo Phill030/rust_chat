@@ -5,8 +5,8 @@ edition = "2021"
 authors = ["Phill030"]
 
 [dependencies]
-async-trait = "0.1.73"
+async-trait = "0.1.74"
 crc32fast = "1.3.2"
-tokio = { version = "1.32.0", features = ["full"] }
-thiserror = "1.0.49"
-toml = "0.8.1"
+tokio = { version = "1.33.0", features = ["full"] }
+thiserror = "1.0.50"
+toml = "0.8.2"
