@@ -57,16 +57,17 @@ impl Server {
                             }
 
                             // TODO: Check if HWID already exists, if not create entry with UUID
-                            let client_some = current_client.clone().unwrap();
+                            let (client_hwid, client_username) = current_client.clone().unwrap();
+                            log::info!("Found Hwid [{}]", client_hwid);
+
                             let session_token = uuid::Uuid::new_v4().to_string();
-                            let username = check_username(&client_some.1);
+                            let username = check_username(&client_username);
 
                             let client = Client {
                                 session_token: session_token.clone(),
-                                hwid: client_some.0.clone(),
+                                hwid: client_hwid.clone(),
                                 name: username,
                             };
-                            log::info!("Found Hwid [{}]", client_some.0);
 
                             let message = AuthenticateToken {
                                 token: session_token,
@@ -76,7 +77,7 @@ impl Server {
                             connected_clients
                                 .lock()
                                 .await
-                                .insert(client_some.0, (stream.try_clone().unwrap(), client));
+                                .insert(client_hwid, (stream.try_clone().unwrap(), client));
 
                             log::info!("{:#?}", connected_clients.lock().await);
 
