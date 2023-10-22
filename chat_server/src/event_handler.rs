@@ -1,4 +1,4 @@
-use crate::{types::Client, write_to_stream};
+use crate::{types::Client, utils::write_to_stream};
 use chat_shared::{
     error::WriteToStreamError,
     protocols::{
