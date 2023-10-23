@@ -172,7 +172,7 @@ impl Serializer for RequestAuthentication {
 
 #[async_trait]
 impl Deserializer for BroadcastMessage {
-    async fn deserialize<'a>(data: &'a [u8]) -> Result<Option<Self>, DeserializerError>
+    async fn deserialize<'a>(data: &'a [u8]) -> Result<Self, DeserializerError>
     where
         Self: Sized,
     {
@@ -198,19 +198,19 @@ impl Deserializer for BroadcastMessage {
         let content = read_string_from_buffer(&mut inner_cursor).await?;
 
         if hwid.is_none() || content.is_none() {
-            return Ok(None);
+            return Err(DeserializerError::InvalidData);
         }
 
-        return Ok(Some(Self {
+        return Ok(Self {
             hwid: hwid.unwrap(),
             content: content.unwrap(),
-        }));
+        });
     }
 }
 
 #[async_trait]
 impl Deserializer for AuthenticateToken {
-    async fn deserialize<'a>(data: &'a [u8]) -> Result<Option<Self>, DeserializerError>
+    async fn deserialize<'a>(data: &'a [u8]) -> Result<Self, DeserializerError>
     where
         Self: Sized,
     {
@@ -235,12 +235,12 @@ impl Deserializer for AuthenticateToken {
         let token = read_string_from_buffer(&mut inner_cursor).await?;
 
         if token.is_none() {
-            return Ok(None);
+            return Err(DeserializerError::InvalidData);
         }
 
-        return Ok(Some(Self {
+        return Ok(Self {
             token: token.unwrap(),
-        }));
+        });
     }
 }
 

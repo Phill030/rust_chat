@@ -42,7 +42,7 @@ pub struct AuthenticateToken {
 
 #[async_trait]
 impl Deserializer for ChatMessage {
-    async fn deserialize<'a>(data: &'a [u8]) -> Result<Option<Self>, DeserializerError>
+    async fn deserialize<'a>(data: &'a [u8]) -> Result<Self, DeserializerError>
     where
         Self: Sized,
     {
@@ -61,7 +61,7 @@ impl Deserializer for ChatMessage {
         let timestamp = data.read_u64().await?;
         if !cmp_timestamp(timestamp) {
             println!("Message invalid or wrong TIME_SINCE_UNIX_EPOCH was sent [{timestamp}]");
-            return Ok(None);
+            return Err(DeserializerError::TimestampOutdated);
         }
 
         let checksum = data.read_u32().await?;
@@ -72,19 +72,19 @@ impl Deserializer for ChatMessage {
         let content = read_string_from_buffer(&mut inner_cursor).await?;
 
         if hwid.is_none() || content.is_none() {
-            return Ok(None);
+            return Err(DeserializerError::InvalidData);
         }
 
-        return Ok(Some(Self {
+        return Ok(Self {
             hwid: hwid.unwrap(),
             content: content.unwrap(),
-        }));
+        });
     }
 }
 
 #[async_trait]
 impl Deserializer for ChangeUsername {
-    async fn deserialize<'a>(data: &'a [u8]) -> Result<Option<Self>, DeserializerError>
+    async fn deserialize<'a>(data: &'a [u8]) -> Result<Self, DeserializerError>
     where
         Self: Sized,
     {
@@ -110,19 +110,19 @@ impl Deserializer for ChangeUsername {
         let new_username = read_string_from_buffer(&mut inner_cursor).await?;
 
         if hwid.is_none() || new_username.is_none() {
-            return Ok(None);
+            return Err(DeserializerError::InvalidData);
         }
 
-        return Ok(Some(Self {
+        return Ok(Self {
             hwid: hwid.unwrap(),
             new_username: new_username.unwrap(),
-        }));
+        });
     }
 }
 
 #[async_trait]
 impl Deserializer for RequestAuthentication {
-    async fn deserialize<'a>(data: &'a [u8]) -> Result<Option<Self>, DeserializerError>
+    async fn deserialize<'a>(data: &'a [u8]) -> Result<Self, DeserializerError>
     where
         Self: Sized,
     {
@@ -148,13 +148,13 @@ impl Deserializer for RequestAuthentication {
         let name = read_string_from_buffer(&mut inner_cursor).await?;
 
         if hwid.is_none() || name.is_none() {
-            return Ok(None);
+            return Err(DeserializerError::InvalidData);
         }
 
-        return Ok(Some(Self {
+        return Ok(Self {
             hwid: hwid.unwrap(),
             name: name.unwrap(),
-        }));
+        });
     }
 }
 
