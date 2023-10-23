@@ -8,7 +8,7 @@ pub trait Serializer {
 
 #[async_trait]
 pub trait Deserializer {
-    async fn deserialize<'a>(data: &'a [u8]) -> Result<Option<Self>, DeserializerError>
+    async fn deserialize<'a>(data: &'a [u8]) -> Result<Self, DeserializerError>
     where
         Self: Sized;
 }
