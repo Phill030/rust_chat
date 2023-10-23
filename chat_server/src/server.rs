@@ -91,7 +91,7 @@ impl Server {
                         log::info!("Client disconnected");
                         log::info!("{:#?}", connected_locked);
                     });
-                    // We do not join the threads because then only one connections works at a time!
+                    // We do not join the threads to keep concurrency
                 }
                 Err(why) => {
                     log::error!("Error accepting client connection");
