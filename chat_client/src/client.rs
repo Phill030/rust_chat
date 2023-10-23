@@ -62,19 +62,13 @@ impl Client {
 
                     match ServerMessageType::from(buffer[0]) {
                         ServerMessageType::AuthenticateToken => {
-                            let message = AuthenticateToken::deserialize(&buffer)
-                                .await
-                                .unwrap()
-                                .unwrap();
+                            let message = AuthenticateToken::deserialize(&buffer).await.unwrap();
 
                             log::info!("Session-Token: {}", message.token);
                         }
                         ServerMessageType::BroadcastMessage => {
                             // TODO: Something OnError
-                            let message = BroadcastMessage::deserialize(&buffer)
-                                .await
-                                .unwrap()
-                                .unwrap();
+                            let message = BroadcastMessage::deserialize(&buffer).await.unwrap();
 
                             log::info!("Received {} from {}", message.content, message.hwid);
                         }

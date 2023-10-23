@@ -62,7 +62,6 @@ impl Server {
 
                             let session_token = uuid::Uuid::new_v4().to_string();
                             let username = check_username(&client_username);
-
                             let client = Client {
                                 session_token: session_token.clone(),
                                 hwid: client_hwid.clone(),
@@ -79,8 +78,10 @@ impl Server {
                                 .await
                                 .insert(client_hwid, (stream.try_clone().unwrap(), client));
 
-                            log::info!("{:#?}", connected_clients.lock().await);
-
+                            log::info!(
+                                "Connected clients: {:#?}",
+                                connected_clients.lock().await.len()
+                            );
                             Self::handle_connection(&stream, &connected_clients).await;
                         }
 
@@ -89,7 +90,6 @@ impl Server {
                         connected_locked.remove(&current_client.clone().unwrap().0);
 
                         log::info!("Client disconnected");
-                        log::info!("{:#?}", connected_locked);
                     });
                     // We do not join the threads to keep concurrency
                 }
@@ -122,17 +122,21 @@ impl Server {
 
                     match ClientMessageType::from(buffer[0]) {
                         ClientMessageType::ChangeUsername => {
-                            let msg = ChangeUsername::deserialize(&buffer).await.unwrap();
-                            if msg.is_some() {
-                                EventHandler::handle_change_username(msg.unwrap());
+                            match ChangeUsername::deserialize(&buffer).await {
+                                Ok(msg) => {
+                                    EventHandler::handle_change_username(msg);
+                                }
+                                Err(_) => {}
                             }
                         }
                         ClientMessageType::ChatMessage => {
-                            let msg = ChatMessage::deserialize(&buffer).await.unwrap();
-                            if msg.is_some() {
-                                EventHandler::handle_send_message(msg.unwrap(), clients)
-                                    .await
-                                    .unwrap();
+                            match ChatMessage::deserialize(&buffer).await {
+                                Ok(msg) => {
+                                    EventHandler::handle_send_message(msg, clients)
+                                        .await
+                                        .unwrap();
+                                }
+                                Err(_) => {}
                             }
                         }
 

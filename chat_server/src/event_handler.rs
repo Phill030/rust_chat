@@ -51,19 +51,8 @@ impl EventHandler {
 
                 match ClientMessageType::from(buffer[0]) {
                     ClientMessageType::RequestAuthentication => {
-                        let message = RequestAuthentication::deserialize(&buffer).await;
-
-                        let msg = match message {
-                            Ok(m) => m,
-                            Err(why) => {
-                                panic!("{why}");
-                            }
-                        };
-
-                        match msg {
-                            Some(m) => return Some((m.hwid.to_string(), m.name.to_string())),
-                            None => None,
-                        }
+                        let message = RequestAuthentication::deserialize(&buffer).await.unwrap();
+                        return Some((message.hwid.to_string(), message.name.to_string()));
                     }
                     _ => {
                         log::error!("Received invalid event before authentication");
