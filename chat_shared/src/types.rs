@@ -3,7 +3,7 @@ use async_trait::async_trait;
 
 #[async_trait]
 pub trait Serializer {
-    async fn serialize<'a>(&self) -> Result<Vec<u8>, SerializerError>;
+    async fn serialize(&self) -> Result<Vec<u8>, SerializerError>;
 }
 
 #[async_trait]

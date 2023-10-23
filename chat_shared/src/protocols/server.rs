@@ -164,7 +164,7 @@ impl Deserializer for RequestAuthentication {
 
 #[async_trait]
 impl Serializer for BroadcastMessage {
-    async fn serialize<'a>(&self) -> Result<Vec<u8>, SerializerError> {
+    async fn serialize(&self) -> Result<Vec<u8>, SerializerError> {
         let mut buffer: Vec<u8> = Vec::new();
 
         // MessageType
@@ -203,7 +203,7 @@ impl Serializer for BroadcastMessage {
 
 #[async_trait]
 impl Serializer for AuthenticateToken {
-    async fn serialize<'a>(&self) -> Result<Vec<u8>, SerializerError> {
+    async fn serialize(&self) -> Result<Vec<u8>, SerializerError> {
         let mut buffer: Vec<u8> = Vec::new();
 
         // MessageType
