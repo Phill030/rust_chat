@@ -56,7 +56,7 @@ impl EventHandler {
                     }
                     _ => {
                         log::error!("Received invalid event before authentication");
-                        None
+                        return None;
                     }
                 }
             }
