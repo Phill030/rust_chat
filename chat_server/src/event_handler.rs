@@ -27,7 +27,7 @@ impl EventHandler {
 
             // The message which get's sent to everyone else
             let message = BroadcastMessage {
-                hwid: chat_message.hwid.to_string(),
+                username: c.name.clone(),
                 content: chat_message.content.to_string(),
             };
             write_to_stream(client_stream, &message).await?;

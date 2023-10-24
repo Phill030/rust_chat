@@ -70,7 +70,7 @@ impl Client {
                             // TODO: Something OnError
                             let message = BroadcastMessage::deserialize(&buffer).await.unwrap();
 
-                            log::info!("Received {} from {}", message.content, message.hwid);
+                            log::info!("{} --> {}", message.username, message.content);
                         }
                         ServerMessageType::InvalidEvent => {
                             log::warn!("Received unknown message from server");

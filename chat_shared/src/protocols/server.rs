@@ -27,7 +27,7 @@ impl From<u8> for ServerMessageType {
 
 #[derive(Debug)]
 pub struct BroadcastMessage {
-    pub hwid: String,
+    pub username: String,
     pub content: String,
 }
 
@@ -176,11 +176,11 @@ impl Serializer for BroadcastMessage {
         buffer.write_u64(time_in_seconds()).await?;
 
         let mut content_buffer = Vec::new();
-        // HWID
+        // Username
         content_buffer
-            .write_u32(u32::try_from(self.hwid.as_bytes().len())?)
+            .write_u32(u32::try_from(self.username.as_bytes().len())?)
             .await?;
-        content_buffer.extend(self.hwid.as_bytes());
+        content_buffer.extend(self.username.as_bytes());
         //Content
         content_buffer
             .write_u32(u32::try_from(self.content.as_bytes().len())?)

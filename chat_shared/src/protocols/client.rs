@@ -194,15 +194,15 @@ impl Deserializer for BroadcastMessage {
         // TODO: Compare checksums
 
         let mut inner_cursor = prepare_inner_cursor(&mut data).await?;
-        let hwid = read_string_from_buffer(&mut inner_cursor).await?;
+        let username = read_string_from_buffer(&mut inner_cursor).await?;
         let content = read_string_from_buffer(&mut inner_cursor).await?;
 
-        if hwid.is_none() || content.is_none() {
+        if username.is_none() || content.is_none() {
             return Err(DeserializerError::InvalidData);
         }
 
         return Ok(Self {
-            hwid: hwid.unwrap(),
+            username: username.unwrap(),
             content: content.unwrap(),
         });
     }
