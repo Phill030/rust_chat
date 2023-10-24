@@ -1,7 +1,7 @@
 use super::server::{AuthenticateToken, BroadcastMessage, ServerMessageType};
 use crate::{
     error::{DeserializerError, SerializerError},
-    types::{Deserializer, Serializer},
+    types::{Deserialize, Serialize},
     utils::{prepare_inner_cursor, read_string_from_buffer, time_in_seconds},
 };
 use async_trait::async_trait;
@@ -50,7 +50,7 @@ pub struct RequestAuthentication {
 //\\//\\//\\//\\//\\//\\//\\//\\
 
 #[async_trait]
-impl Serializer for ChatMessage {
+impl Serialize for ChatMessage {
     async fn serialize(&self) -> Result<Vec<u8>, SerializerError> {
         let mut buffer: Vec<u8> = Vec::new();
 
@@ -89,7 +89,7 @@ impl Serializer for ChatMessage {
 }
 
 #[async_trait]
-impl Serializer for ChangeUsername {
+impl Serialize for ChangeUsername {
     async fn serialize(&self) -> Result<Vec<u8>, SerializerError> {
         let mut buffer: Vec<u8> = Vec::new();
 
@@ -128,7 +128,7 @@ impl Serializer for ChangeUsername {
 }
 
 #[async_trait]
-impl Serializer for RequestAuthentication {
+impl Serialize for RequestAuthentication {
     async fn serialize(&self) -> Result<Vec<u8>, SerializerError> {
         let mut buffer: Vec<u8> = Vec::new();
 
@@ -171,7 +171,7 @@ impl Serializer for RequestAuthentication {
 //\\//\\//\\//\\//\\//\\//\\//\\
 
 #[async_trait]
-impl Deserializer for BroadcastMessage {
+impl Deserialize for BroadcastMessage {
     async fn deserialize<'a>(data: &'a [u8]) -> Result<Self, DeserializerError>
     where
         Self: Sized,
@@ -209,7 +209,7 @@ impl Deserializer for BroadcastMessage {
 }
 
 #[async_trait]
-impl Deserializer for AuthenticateToken {
+impl Deserialize for AuthenticateToken {
     async fn deserialize<'a>(data: &'a [u8]) -> Result<Self, DeserializerError>
     where
         Self: Sized,

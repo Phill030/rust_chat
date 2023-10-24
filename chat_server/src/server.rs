@@ -8,7 +8,7 @@ use chat_shared::{
         client::{ChangeUsername, ChatMessage, ClientMessageType},
         server::AuthenticateToken,
     },
-    types::Deserializer,
+    types::Deserialize,
 };
 use std::{
     collections::HashMap,

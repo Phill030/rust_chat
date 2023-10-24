@@ -5,7 +5,7 @@ use chat_shared::{
         client::{ChangeUsername, ChatMessage, ClientMessageType, RequestAuthentication},
         server::BroadcastMessage,
     },
-    types::Deserializer,
+    types::Deserialize,
 };
 use std::{collections::HashMap, io::Read, net::TcpStream, process, sync::Arc};
 use tokio::sync::Mutex;

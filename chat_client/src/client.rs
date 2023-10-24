@@ -7,7 +7,7 @@ use std::{
 use chat_shared::{
     protocols::client::{ChatMessage, RequestAuthentication},
     protocols::server::{AuthenticateToken, BroadcastMessage, ServerMessageType},
-    types::Deserializer,
+    types::Deserialize,
 };
 
 use crate::{
