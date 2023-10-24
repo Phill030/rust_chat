@@ -122,21 +122,15 @@ impl Server {
 
                     match ClientMessageType::from(buffer[0]) {
                         ClientMessageType::ChangeUsername => {
-                            match ChangeUsername::deserialize(&buffer).await {
-                                Ok(msg) => {
-                                    EventHandler::handle_change_username(msg);
-                                }
-                                Err(_) => {}
+                            if let Ok(msg) = ChangeUsername::deserialize(&buffer).await {
+                                EventHandler::handle_change_username(msg);
                             }
                         }
                         ClientMessageType::ChatMessage => {
-                            match ChatMessage::deserialize(&buffer).await {
-                                Ok(msg) => {
-                                    EventHandler::handle_send_message(msg, clients)
-                                        .await
-                                        .unwrap();
-                                }
-                                Err(_) => {}
+                            if let Ok(msg) = ChatMessage::deserialize(&buffer).await {
+                                EventHandler::handle_send_message(msg, clients)
+                                    .await
+                                    .unwrap();
                             }
                         }
 
