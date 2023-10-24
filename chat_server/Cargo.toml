@@ -20,3 +20,4 @@ tokio-util = { version = "0.7.9", features = ["io-util", "rt"] }
 toml = "0.8.2"
 uuid = { version = "1.5.0", features = ["v4", "fast-rng"] }
 chat_shared = { path = "../chat_shared" }
+rustls = "0.21.7"
