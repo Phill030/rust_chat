@@ -152,15 +152,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "chat_macro"
+version = "1.0.0"
+dependencies = [
+ "quote",
+ "syn 2.0.38",
+]
+
+[[package]]
 name = "chat_server"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "chat_macro",
  "chat_shared",
  "crc32fast",
  "env_logger",
  "futures",
  "log",
+ "paste",
  "rand",
  "rayon",
  "rustls",
@@ -178,6 +188,7 @@ name = "chat_shared"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "chat_macro",
  "crc32fast",
  "thiserror",
  "tokio",
@@ -685,6 +696,12 @@ dependencies = [
  "smallvec",
  "windows-targets",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
 
 [[package]]
 name = "pin-project-lite"
