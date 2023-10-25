@@ -91,6 +91,9 @@ pub fn derive_deserialize(input: TokenStream) -> TokenStream {
                 let mut inner_cursor = prepare_inner_cursor(&mut data).await?;
                 {variables}
 
+                //TODO IMPORTANT!! ADD #.is_none() checks and return 
+                //`return Err(DeserializerError::InvalidData);`
+
                 {return_string}
             }}
         }}"
