@@ -1,13 +1,16 @@
 use std::{io::Write, net::TcpStream};
 
-use chat_shared::{error::WriteToStreamError, types::Serialize};
+use chat_shared::{
+    error::WriteToStreamError,
+    types::{Deserialize, Serialize},
+};
 
 pub async fn write_to_stream<T>(
     mut stream: &TcpStream,
     content: &T,
 ) -> Result<bool, WriteToStreamError>
 where
-    T: Serialize,
+    T: Serialize + Deserialize,
 {
     let Ok(serialized) = &content.serialize().await else {
         log::error!("Unable to serialize message");
