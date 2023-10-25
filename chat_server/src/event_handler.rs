@@ -25,7 +25,6 @@ impl EventHandler {
                 continue;
             }
 
-            // The message which get's sent to everyone else
             let message = BroadcastMessage {
                 username: c.name.clone(),
                 content: chat_message.content.to_string(),
