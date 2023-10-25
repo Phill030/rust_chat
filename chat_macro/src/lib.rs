@@ -1,11 +1,13 @@
 use proc_macro::*;
-use syn::{parse_macro_input, Data, DataStruct, DeriveInput, Fields};
+use quote::ToTokens;
+use syn::{parse_macro_input, Data, DataStruct, DeriveInput, Fields, TypePath};
 
 #[proc_macro_derive(Serialize, attributes(Belonging))]
 pub fn derive_serialize(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
     let struct_name = get_struct_name(&input);
     let fields = get_fields(&input);
+    let attribute = parse_attr(&input);
 
     let mut contents = String::new();
     fields.iter().for_each(|f| {
@@ -25,7 +27,7 @@ pub fn derive_serialize(input: TokenStream) -> TokenStream {
                 let mut buffer: Vec<u8> = Vec::new();
                 
                 // MessageType
-                buffer.write_u8(ClientMessageType::{struct_name} as u8).await?;
+                buffer.write_u8({attribute}::{struct_name} as u8).await?;
 
                 let mut content_buffer: Vec<u8> = Vec::new();
                 {contents}
@@ -48,6 +50,7 @@ pub fn derive_deserialize(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as syn::DeriveInput);
     let struct_name = get_struct_name(&input);
     let fields = get_fields(&input);
+    let attribute = parse_attr(&input);
 
     let mut variables = String::new();
     fields.iter().for_each(|f| {
@@ -77,8 +80,8 @@ pub fn derive_deserialize(input: TokenStream) -> TokenStream {
                 let mut data = Cursor::new(data);
 
                 let msg_type = data.read_u8().await?;
-                let message_type = ClientMessageType::from(msg_type);
-                if message_type != ClientMessageType::{struct_name} {{
+                let message_type = {attribute}::from(msg_type);
+                if message_type != {attribute}::{struct_name} {{
                     return Err(DeserializerError::InvalidMessageType);
                 }}
 
@@ -118,9 +121,24 @@ fn get_struct_name(input: &DeriveInput) -> String {
     }
 }
 
-#[proc_macro_attribute]
-pub fn show_streams(attr: TokenStream, item: TokenStream) -> TokenStream {
-    println!("attr: \"{}\"", attr.to_string());
-    println!("item: \"{}\"", item.to_string());
-    item
+fn parse_attr(input: &DeriveInput) -> String {
+    if input.attrs.len() != 1 {
+        panic!(
+            "Struct must have exactly one attribute: either ClientMessageType or ServerMessageType"
+        );
+    }
+
+    let attr = input.attrs.first().unwrap();
+    if attr.path().is_ident("Belonging") {
+        let args = attr.parse_args::<TypePath>().unwrap();
+        let message_type = args.to_token_stream().to_string();
+
+        if message_type != "ClientMessageType" && message_type != "ServerMessageType" {
+            panic!("Belonging attribute argument must be either 'ClientMessageType' or 'ServerMessageType'");
+        }
+
+        message_type
+    } else {
+        panic!("Only the Belonging attribute is supported");
+    }
 }
