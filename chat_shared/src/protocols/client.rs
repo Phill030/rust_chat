@@ -26,7 +26,7 @@ impl From<u8> for ClientMessageType {
     }
 }
 
-#[derive(Debug, chat_macro::Serialize, chat_macro::Deserialize)]
+#[derive(Debug, PartialEq, Eq, chat_macro::Serialize, chat_macro::Deserialize)]
 #[Belonging(ClientMessageType)]
 pub struct ChatMessage {
     pub hwid: String,

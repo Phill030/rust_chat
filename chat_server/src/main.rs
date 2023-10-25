@@ -20,13 +20,10 @@ async fn main() -> std::io::Result<()> {
     let x = ChatMessage {
         hwid: "BBBB".to_string(),
         content: "AAAA".to_string(),
-    }
-    .serialize()
-    .await
-    .unwrap();
-
-    log::error!("{:?}", x);
-    log::error!("{:?}", ChatMessage::deserialize(&x).await.unwrap());
+    };
+    let serialized = x.serialize().await.unwrap();
+    let deserialized = ChatMessage::deserialize(&serialized).await.unwrap();
+    assert!(deserialized == x, "Deserialization of struct failed!");
 
     // let db = Surreal::new::<Mem>(()).await.unwrap();
     // db.use_ns("chat").use_db("clients").await.unwrap();
