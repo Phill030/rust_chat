@@ -170,7 +170,6 @@ dependencies = [
  "env_logger",
  "futures",
  "log",
- "paste",
  "rand",
  "rayon",
  "rustls",
@@ -696,12 +695,6 @@ dependencies = [
  "smallvec",
  "windows-targets",
 ]
-
-[[package]]
-name = "paste"
-version = "1.0.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
 
 [[package]]
 name = "pin-project-lite"
