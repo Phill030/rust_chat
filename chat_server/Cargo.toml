@@ -21,3 +21,5 @@ toml = "0.8.2"
 uuid = { version = "1.5.0", features = ["v4", "fast-rng"] }
 chat_shared = { path = "../chat_shared" }
 rustls = "0.21.7"
+paste = "1.0.14"
+chat_macro = { path = "../chat_macro" }
