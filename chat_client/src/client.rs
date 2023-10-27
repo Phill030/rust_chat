@@ -10,10 +10,7 @@ use chat_shared::{
     types::Deserialize,
 };
 
-use crate::{
-    types::Config,
-    utils::{construct_hwid, write_to_stream},
-};
+use crate::{types::Config, utils::write_to_stream};
 
 #[derive(Clone, Debug)]
 pub struct Client;
@@ -21,7 +18,7 @@ pub struct Client;
 impl Client {
     pub async fn start(stream: &TcpStream, config: &Config, hwid: &String) -> io::Result<()> {
         // It is required to send the HWID to the server to authorize with it
-        Self::request_authentication(&stream, &config).await;
+        Self::request_authentication(&stream, &config, hwid.to_string()).await;
 
         let read_stream = stream.try_clone()?;
         let cloned_config = config.clone();
@@ -86,9 +83,9 @@ impl Client {
         }
     }
 
-    async fn request_authentication(stream: &TcpStream, config: &Config) {
+    async fn request_authentication(stream: &TcpStream, config: &Config, hwid: String) {
         let message = RequestAuthentication {
-            hwid: construct_hwid(),
+            hwid,
             name: config.name.to_string(),
         };
 
