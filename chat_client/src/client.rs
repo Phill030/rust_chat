@@ -16,9 +16,7 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-pub struct Client {
-    session_token: Option<String>,
-}
+pub struct Client;
 
 impl Client {
     pub async fn start(stream: &TcpStream, config: &Config, hwid: &String) -> io::Result<()> {
