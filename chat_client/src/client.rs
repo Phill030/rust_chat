@@ -62,7 +62,6 @@ impl Client {
                             log::info!("Session-Token: {}", message.token);
                         }
                         ServerMessageType::BroadcastMessage => {
-                            // TODO: Something OnError
                             let message = BroadcastMessage::deserialize(&buffer).await.unwrap();
 
                             log::info!("{} --> {}", message.username, message.content);
