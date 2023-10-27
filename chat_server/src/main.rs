@@ -34,3 +34,7 @@ async fn main() -> std::io::Result<()> {
 
     Ok(())
 }
+
+//https://docs.rs/crate/hashcash/latest/source/src/lib.rs
+//
+//
