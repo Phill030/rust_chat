@@ -1,3 +1,3 @@
 [workspace]
-members = ["chat_client", "chat_server", "chat_shared"]
+members = ["chat_client", "chat_server", "chat_shared", "chat_macro"]
 resolver = "2"

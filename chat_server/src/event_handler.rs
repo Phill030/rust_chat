@@ -1,11 +1,11 @@
-use crate::{types::Client, write_to_stream};
+use crate::{types::Client, utils::write_to_stream};
 use chat_shared::{
     error::WriteToStreamError,
     protocols::{
         client::{ChangeUsername, ChatMessage, ClientMessageType, RequestAuthentication},
         server::BroadcastMessage,
     },
-    types::Deserializer,
+    types::Deserialize,
 };
 use std::{collections::HashMap, io::Read, net::TcpStream, process, sync::Arc};
 use tokio::sync::Mutex;
@@ -25,9 +25,8 @@ impl EventHandler {
                 continue;
             }
 
-            // The message which get's sent to everyone else
             let message = BroadcastMessage {
-                hwid: chat_message.hwid.to_string(),
+                username: c.name.clone(),
                 content: chat_message.content.to_string(),
             };
             write_to_stream(client_stream, &message).await?;
@@ -51,23 +50,12 @@ impl EventHandler {
 
                 match ClientMessageType::from(buffer[0]) {
                     ClientMessageType::RequestAuthentication => {
-                        let message = RequestAuthentication::deserialize(&buffer).await;
-
-                        let msg = match message {
-                            Ok(m) => m,
-                            Err(why) => {
-                                panic!("{why}");
-                            }
-                        };
-
-                        match msg {
-                            Some(m) => return Some((m.hwid.to_string(), m.name.to_string())),
-                            None => None,
-                        }
+                        let message = RequestAuthentication::deserialize(&buffer).await.unwrap();
+                        return Some((message.hwid.to_string(), message.name.to_string()));
                     }
                     _ => {
                         log::error!("Received invalid event before authentication");
-                        None
+                        return None;
                     }
                 }
             }

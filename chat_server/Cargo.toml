@@ -6,7 +6,6 @@ authors = ["Phill030"]
 
 [dependencies]
 async-trait = "0.1.74"
-crc32fast = "1.3.2"
 env_logger = "0.10.0"
 futures = "0.3.28"
 log = "0.4.20"
@@ -20,3 +19,5 @@ tokio-util = { version = "0.7.9", features = ["io-util", "rt"] }
 toml = "0.8.2"
 uuid = { version = "1.5.0", features = ["v4", "fast-rng"] }
 chat_shared = { path = "../chat_shared" }
+rustls = "0.21.7"
+chat_macro = { path = "../chat_macro" }

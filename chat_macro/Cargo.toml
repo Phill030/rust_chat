@@ -1,0 +1,13 @@
+[package]
+name = "chat_macro"
+version = "1.0.0"
+edition = "2021"
+
+[lib]
+name = "chat_macro"
+path = "src/lib.rs"
+proc-macro = true
+
+[dependencies]
+quote = "1.0.33"
+syn = "2.0.38"
