@@ -24,14 +24,14 @@ impl From<u8> for ServerMessageType {
     }
 }
 
-#[derive(Debug, chat_macro::Serialize, chat_macro::Deserialize)]
+#[derive(Debug, PartialEq, Eq, chat_macro::Serialize, chat_macro::Deserialize)]
 #[Belonging(ServerMessageType)]
 pub struct BroadcastMessage {
     pub username: String,
     pub content: String,
 }
 
-#[derive(Debug, chat_macro::Serialize, chat_macro::Deserialize)]
+#[derive(Debug, PartialEq, Eq, chat_macro::Serialize, chat_macro::Deserialize)]
 #[Belonging(ServerMessageType)]
 pub struct AuthenticateToken {
     pub token: String,

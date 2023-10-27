@@ -33,7 +33,7 @@ pub struct ChatMessage {
     pub content: String,
 }
 
-#[derive(Debug, chat_macro::Serialize, chat_macro::Deserialize)]
+#[derive(Debug, PartialEq, Eq, chat_macro::Serialize, chat_macro::Deserialize)]
 #[Belonging(ClientMessageType)]
 
 pub struct ChangeUsername {
@@ -41,7 +41,7 @@ pub struct ChangeUsername {
     pub new_username: String,
 }
 
-#[derive(Debug, chat_macro::Serialize, chat_macro::Deserialize)]
+#[derive(Debug, PartialEq, Eq, chat_macro::Serialize, chat_macro::Deserialize)]
 #[Belonging(ClientMessageType)]
 pub struct RequestAuthentication {
     pub hwid: String,
