@@ -33,7 +33,6 @@ pub fn derive_serialize(input: TokenStream) -> TokenStream {
                 {contents}
 
                 // Misc.
-                buffer.write_u32(crc32fast::hash(&content_buffer[..])).await?;
                 buffer.write_u32(u32::try_from(content_buffer.len())?).await?;
 
                 buffer.append(&mut content_buffer);
@@ -84,9 +83,6 @@ pub fn derive_deserialize(input: TokenStream) -> TokenStream {
                 if message_type != {attribute}::{struct_name} {{
                     return Err(DeserializerError::InvalidMessageType);
                 }}
-
-                let checksum = data.read_u32().await?;
-                // TODO: Compare checksums
 
                 let mut inner_cursor = prepare_inner_cursor(&mut data).await?;
                 {variables}
