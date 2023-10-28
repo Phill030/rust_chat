@@ -20,7 +20,7 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
           override: true
-      - uses: action-rs/cargo@v1
+      - uses: actions-rs/cargo@v1
         with:
           use-cross: true
           command: test
@@ -38,7 +38,7 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
           override: true
-      - uses: action-rs/cargo@v1
+      - uses: actions-rs/cargo@v1
         with:
           use-cross: true
           command: test
