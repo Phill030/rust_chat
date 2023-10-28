@@ -29,8 +29,6 @@ pub enum DeserializerError {
     InvalidBufferLength,
     #[error("Received invalid data")]
     InvalidData,
-    #[error("Received an invalid or outdated Timestamp")]
-    TimestampOutdated,
     #[error("Unable to convert to UTF-8")]
     FromUtf8Error(#[from] FromUtf8Error),
 }
