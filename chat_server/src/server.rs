@@ -26,6 +26,15 @@ pub struct Server {
     pub tcp_listener: TcpListener,
 }
 
+impl Clone for Server {
+    fn clone(&self) -> Self {
+        Self {
+            connected_clients: self.connected_clients.clone(),
+            tcp_listener: self.tcp_listener.try_clone().unwrap(),
+        }
+    }
+}
+
 impl Server {
     pub fn create(endpoint: SocketAddr) -> std::io::Result<Server> {
         let connected_clients = Arc::new(Mutex::new(HashMap::new()));
