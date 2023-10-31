@@ -21,3 +21,4 @@ uuid = { version = "1.5.0", features = ["v4", "fast-rng"] }
 chat_shared = { path = "../chat_shared" }
 rustls = "0.21.7"
 chat_macro = { path = "../chat_macro" }
+eframe = "0.23.0"
