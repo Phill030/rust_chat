@@ -1,8 +1,6 @@
-use std::sync::Arc;
-
+use crate::server::Server;
 use eframe::{egui, run_native, App, NativeOptions};
-
-use crate::{config::config::ConfigManager, server::Server};
+use std::sync::Arc;
 
 #[derive(Default, Clone)]
 pub struct Window {
@@ -16,18 +14,12 @@ impl Window {
 }
 
 impl App for Window {
-    fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             if !self.server.is_some() {
                 let button = ui.button("Start server");
                 if button.clicked() {
-                    let mut cloned_server = self.clone().server;
-                    tokio::spawn(async move {
-                        let config = ConfigManager::initialize_or_create().await.unwrap();
-                        cloned_server = Arc::new(Some(Server::create(config.endpoint).unwrap()));
-                    });
-
-                    self.server = cloned_server;
+                    //
                 }
             }
 
