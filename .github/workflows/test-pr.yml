@@ -5,6 +5,10 @@ on:
     types: [opened, reopened]
     branches:
       - "**"
+  pull_request_target:
+    types: [opened, reopened]
+    branches:
+      - "**"
 
 jobs:
   test-linux:
