@@ -1,10 +1,10 @@
-use crate::server::Server;
+use crate::{config::config::ConfigManager, server::Server, types::Config};
 use eframe::{egui, run_native, App, NativeOptions};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Default, Clone)]
 pub struct Window {
-    server: Arc<Option<Server>>,
+    server: Option<Server>,
 }
 
 impl Window {
@@ -23,11 +23,11 @@ impl App for Window {
                 }
             }
 
-            if self.server.as_ref().is_some() {
+            if self.server.is_some() {
                 ui.collapsing("Click to see what is hidden!", |ui| {
                     ui.label(format!(
                         "{:#?}",
-                        &self.server.as_ref().clone().unwrap().connected_clients
+                        &self.server.clone().unwrap().connected_clients
                     ))
                 });
             }
