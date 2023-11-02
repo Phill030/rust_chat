@@ -10,7 +10,7 @@ pub struct Client {
     pub session_token: String,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
 pub struct Config {
     pub endpoint: SocketAddr,
     pub buffer_size: usize,
