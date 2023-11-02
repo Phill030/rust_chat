@@ -14,14 +14,9 @@ mod window;
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    // let db = Surreal::new::<Mem>(()).await.unwrap();
-    // db.use_ns("chat").use_db("clients").await.unwrap();
-    // let db_client = Arc::new(db);
-
-    window::start_window();
-
     let config = ConfigManager::initialize_or_create().await.unwrap();
-    Server::create(config.endpoint)?;
+    window::start_window(config);
+    Server::create(config.endpoint).unwrap();
 
     Ok(())
 }

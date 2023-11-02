@@ -1,46 +1,38 @@
-use crate::server::Server;
+use crate::types::Config;
 use eframe::{egui, run_native, App, NativeOptions};
-use std::sync::Arc;
 
-#[derive(Default, Clone)]
 pub struct Window {
-    server: Arc<Option<Server>>,
+    config: Config,
 }
 
 impl Window {
-    fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        Self::default()
+    fn new(cc: &eframe::CreationContext<'_>, config: Config) -> Self {
+        Self { config }
     }
 }
 
 impl App for Window {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            if !self.server.is_some() {
-                let button = ui.button("Start server");
-                if button.clicked() {
-                    //
-                }
-            }
-
-            if self.server.as_ref().is_some() {
-                ui.collapsing("Click to see what is hidden!", |ui| {
-                    ui.label(format!(
-                        "{:#?}",
-                        &self.server.as_ref().clone().unwrap().connected_clients
-                    ))
-                });
-            }
+            ui.label(format!(
+                "Server running on {}:{}",
+                self.config.endpoint.ip(),
+                self.config.endpoint.port()
+            ));
         });
     }
 }
 
-pub fn start_window() {
+pub fn start_window(config: Config) {
     let win_option = NativeOptions::default();
     run_native(
         "Chat Server",
         win_option,
-        Box::new(|cc| Box::new(Window::new(cc))),
+        Box::new(move |cc| {
+            let config_cloned = config.clone();
+
+            Box::new(Window::new(cc, config_cloned))
+        }),
     )
     .unwrap();
 }
