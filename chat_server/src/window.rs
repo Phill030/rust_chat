@@ -1,24 +1,40 @@
 use crate::types::Config;
-use eframe::{egui, run_native, App, NativeOptions};
+use eframe::{
+    egui::{self, CentralPanel, TextEdit},
+    run_native, App, NativeOptions,
+};
 
+#[derive(Default)]
 pub struct Window {
     config: Config,
+    logs: String,
 }
 
 impl Window {
     fn new(cc: &eframe::CreationContext<'_>, config: Config) -> Self {
-        Self { config }
+        Self {
+            config,
+            ..Default::default()
+        }
     }
 }
 
 impl App for Window {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label(format!(
-                "Server running on {}:{}",
-                self.config.endpoint.ip(),
-                self.config.endpoint.port()
-            ));
+        CentralPanel::default().show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(format!(
+                    "Server running on {}:{}",
+                    self.config.endpoint.ip(),
+                    self.config.endpoint.port()
+                ));
+                if ui.button("Stop server").clicked() {
+                    self.logs
+                        .push_str("> [ERR: config:window.rs:update] Error log message\n");
+                }
+            });
+
+            ui.text_edit_multiline(&mut self.logs);
         });
     }
 }
