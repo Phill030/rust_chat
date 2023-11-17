@@ -5,16 +5,16 @@ edition = "2021"
 authors = ["Phill030"]
 
 [dependencies]
-env_logger = "0.10.0"
+env_logger = "0.10.1"
 futures = "0.3.29"
 log = "0.4.20"
 machineid-rs = "1.2.4"
 rand = "0.8.5"
 rayon = "1.8.0"
-serde = { version = "1.0.190", features = ["derive"] }
+serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
 thiserror = "1.0.50"
-tokio = { version = "1.33.0", features = ["full"] }
+tokio = { version = "1.34.0", features = ["full"] }
 tokio-util = { version = "0.7.10", features = ["io-util", "rt"] }
-toml = "0.8.6"
+toml = "0.8.8"
 chat_shared = { path = "../chat_shared" }
