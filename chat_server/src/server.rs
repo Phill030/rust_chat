@@ -56,7 +56,6 @@ impl Server {
                         log::info!("{} connected,", stream.peer_addr().unwrap());
 
                         // Each client get's a custom thread
-
                         runtime_builder.spawn(async move {
                             let mut current_client: Option<(String, String)> = None;
 

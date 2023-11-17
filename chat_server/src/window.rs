@@ -1,8 +1,5 @@
 use crate::types::Config;
-use eframe::{
-    egui::{self, CentralPanel, TextEdit},
-    run_native, App, NativeOptions,
-};
+use eframe::{egui::CentralPanel, run_native, App, NativeOptions};
 
 #[derive(Default)]
 pub struct Window {
@@ -11,7 +8,7 @@ pub struct Window {
 }
 
 impl Window {
-    fn new(cc: &eframe::CreationContext<'_>, config: Config) -> Self {
+    fn new(_cc: &eframe::CreationContext<'_>, config: Config) -> Self {
         Self {
             config,
             ..Default::default()

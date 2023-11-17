@@ -1,7 +1,5 @@
 extern crate chat_macro;
 
-use std::thread;
-
 use config::config::ConfigManager;
 use server::Server;
 
