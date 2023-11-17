@@ -44,6 +44,11 @@ impl Server {
             let tcp_listener = TcpListener::bind(endpoint).unwrap();
             log::info!("Server started @ {:#?}", endpoint);
 
+            let runtime_builder = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+
             for stream in tcp_listener.incoming() {
                 match stream {
                     Ok(stream) => {
@@ -51,7 +56,8 @@ impl Server {
                         log::info!("{} connected,", stream.peer_addr().unwrap());
 
                         // Each client get's a custom thread
-                        tokio::spawn(async move {
+
+                        runtime_builder.spawn(async move {
                             let mut current_client: Option<(String, String)> = None;
 
                             {
