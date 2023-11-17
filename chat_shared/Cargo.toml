@@ -6,7 +6,7 @@ authors = ["Phill030"]
 
 [dependencies]
 async-trait = "0.1.74"
-tokio = { version = "1.33.0", features = ["full"] }
+tokio = { version = "1.34.0", features = ["full"] }
 thiserror = "1.0.50"
-toml = "0.8.6"
+toml = "0.8.8"
 chat_macro = { path = "../chat_macro" }
