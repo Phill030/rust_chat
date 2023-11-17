@@ -1,5 +1,7 @@
 extern crate chat_macro;
 
+use std::thread;
+
 use config::config::ConfigManager;
 use server::Server;
 
@@ -13,10 +15,10 @@ mod window;
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
-
     let config = ConfigManager::initialize_or_create().await.unwrap();
-    window::start_window(config);
+
     Server::create(config.endpoint).unwrap();
+    window::start_window(config);
 
     Ok(())
 }
