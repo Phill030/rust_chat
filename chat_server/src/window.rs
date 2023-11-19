@@ -1,5 +1,8 @@
 use crate::types::Config;
-use eframe::{egui::CentralPanel, run_native, App, NativeOptions};
+use eframe::{
+    egui::{CentralPanel, ScrollArea, SidePanel, Style, TopBottomPanel, Visuals},
+    run_native, App, NativeOptions,
+};
 
 #[derive(Default)]
 pub struct Window {
@@ -18,6 +21,21 @@ impl Window {
 
 impl App for Window {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
+        SidePanel::left("left_panel").show(ctx, |ui| {
+            const WIDTH: f32 = 125.0;
+
+            ui.set_min_width(WIDTH);
+            ui.set_max_width(WIDTH);
+
+            ScrollArea::vertical().show(ui, |ui| {
+                ui.set_width(ui.available_width());
+
+                for i in 0..=999 {
+                    ui.selectable_label(false, format!("User{i}"));
+                }
+            })
+        });
+
         CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label(format!(
@@ -43,6 +61,11 @@ pub fn start_window(config: Config) {
         win_option,
         Box::new(move |cc| {
             let config_cloned = config.clone();
+            let style = Style {
+                visuals: Visuals::dark(),
+                ..Style::default()
+            };
+            cc.egui_ctx.set_style(style);
 
             Box::new(Window::new(cc, config_cloned))
         }),
