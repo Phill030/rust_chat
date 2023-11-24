@@ -1,6 +1,6 @@
 use crate::types::Config;
 use eframe::{
-    egui::{CentralPanel, ScrollArea, SidePanel, Style, TopBottomPanel, Visuals},
+    egui::{CentralPanel, ScrollArea, SidePanel, Style, Visuals},
     run_native, App, NativeOptions,
 };
 
