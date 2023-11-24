@@ -50,7 +50,3 @@ mod tests {
         assert_eq!(deserialized, x, "Deserialization of struct failed!");
     }
 }
-
-//https://docs.rs/crate/hashcash/latest/source/src/lib.rs
-//
-//
